@@ -99,7 +99,19 @@ func LoginGoogle(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Expired credential"})
 	}
 
-	userProfile := UserProfile{payload.Claims["name"].(string), payload.Claims["picture"].(string)}
+	claims := jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		Subject:   payload.Subject,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	ss, err := token.SignedString([]byte(jwt_signature))
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Error signing JWT token for user %s", payload.Subject), err.Error())
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error creating token for user"})
+	}
+
+	userProfile := UserProfile{payload.Claims["name"].(string), payload.Claims["picture"].(string), ss}
 
 	// Return HTTP 200 if success
 	return c.JSON(http.StatusOK, &userProfile)
