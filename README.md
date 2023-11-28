@@ -57,5 +57,46 @@ HTTP 422
 }
 ```
 
+### Send ticket
+This is the most important endpoint, because it's the responsible of receiving and processing the ticket information. Despiste being a process which can delay for some seconsd, it's not planned to run as a background service yet.
+To process a ticket, an image has to be sent with valid format (currently JPG, TIFF, PDF) and enough quality. If image lacks details or has not enough information, the ticket will not be processed.
+Take into consideration each request is charged in AWS, so avoid trial-and-error while uploading tickets.
+
+** Request **
+```json
+POST /ticket
+Content-type: multipart/form-data
+
+...
+```
+
+```
+** Response ok **
+{
+  "message": "Ticket created successfully",
+  "ticket": {
+    "id": 1,
+    "date": "1/1/2023",
+    "supermarket": "Any",
+    "items": [
+      {
+        "concept": "Bread",
+        "quantity": 5
+        "unit_price": 1
+        "price": 5
+      },
+      ...
+    ]
+  }
+}
+```
+
+** Response error **
+```
+{
+  "message": "Missing file"
+}
+```
+
 ## Frontend
 TODO
