@@ -1,17 +1,18 @@
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
-    "net/http"
-    "os"
-    "time"
+	"context"
+	"database/sql"
+	"log"
+	"net/http"
+	"os"
+	"time"
 
-    "google.golang.org/api/idtoken"
-    "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
-    "github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v4/middleware"
+	_ "github.com/mattn/go-sqlite3"
+	"google.golang.org/api/idtoken"
 )
 
 type Login struct {
@@ -19,11 +20,46 @@ type Login struct {
 }
 
 type UserProfile struct {
-    Name string `json:"name"`
-    Picture_url string `json:"picture_url"`
+	Name        string `json:"name"`
+	Picture_url string `json:"picture_url"`
+}
+
+type ErrorMessage struct {
+	Message string `json:"message"`
 }
 
 var google_client_id string
+var db *sql.DB
+
+func NewDB(adapter string, name string) (*sql.DB, error) {
+	db, err := sql.Open(adapter, name)
+	if err != nil {
+		return nil, err
+	}
+
+	const create = `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER NOT NULL PRIMARY KEY,
+		google_uid varchar(255)
+	  );`
+
+	if _, err := db.Exec(create); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
+// Check if given google id user exists in database
+func checkIfGoogleUidExists(google_uid string) bool {
+	row := db.QueryRow("SELECT id FROM users WHERE google_uid = ?", google_uid)
+
+	var id int
+	if err := row.Scan(&id); err != nil {
+		return false
+	}
+	return true
+}
 
 // Receive credential for Google login and validate it agains Google API
 // If credential is valid, extract name and profile picture url
@@ -57,42 +93,31 @@ func login_google(c echo.Context) error {
 	return c.JSON(http.StatusOK, &userProfile)
 }
 
-// Creates a ticket from file
-func create_ticket(c echo.Context) error {
-    file, err := c.FormFile("file")
-
-    if err != nil {
-        log.Println("create_ticket - File error", err)
-        return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error loading file"})
-    }
-
-    // Ensure file has the right format
-    format := file.Header["Content-Type"][0]
-    if format != "image/png" && format != "image/jpg" && format != "application/pdf" {
-        return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Unsupported file format"})
-    }
-
-    // TODO: process with Textract
-    // TODO: store ticket information
-
-    return c.JSON(http.StatusOK, echo.Map{"message": "Ticket created successfully"})
-}
-
 func main() {
-    err := godotenv.Load(".env")
-    if err != nil {
-        panic(err)
-    }
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic(err)
+	}
 
-    google_client_id = os.Getenv("GOOGLE_CLIENT_ID")
+	google_client_id = os.Getenv("GOOGLE_CLIENT_ID")
+	if len(google_client_id) == 0 {
+		panic("Empty value for GOOGLE_CLIENT_ID")
+	}
 
-    if len(google_client_id) == 0 {
-        panic("Empty value for GOOGLE_CLIENT_ID")
-    }
+	db_name := os.Getenv("DB_NAME")
+	if len(db_name) == 0 {
+		panic("Empty value for DB_NAME")
+	}
 
-    e := echo.New()
-    e.Use(middleware.CORS())
-    e.POST("/login/google", login_google)
-    e.POST("/ticket", create_ticket)
-    e.Logger.Fatal(e.Start(":8000"))
+	db, err = NewDB("sqlite3", db_name)
+	if err != nil {
+		log.Fatal(err)
+		panic("Error opening database")
+	}
+
+	e := echo.New()
+	e.Use(middleware.CORS())
+	e.POST("/login/google", login_google)
+	//e.POST("/ticket", create_ticket)
+	e.Logger.Fatal(e.Start(":8000"))
 }
