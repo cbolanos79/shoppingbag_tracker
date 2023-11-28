@@ -2,6 +2,7 @@ package main
 
 import (
     "context"
+    "fmt"
     "log"
     "net/http"
     "os"
@@ -56,6 +57,27 @@ func login_google(c echo.Context) error {
 	return c.JSON(http.StatusOK, &userProfile)
 }
 
+// Creates a ticket from file
+func create_ticket(c echo.Context) error {
+    file, err := c.FormFile("file")
+
+    if err != nil {
+        log.Println("create_ticket - File error", err)
+        return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error loading file"})
+    }
+
+    // Ensure file has the right format
+    format := file.Header["Content-Type"][0]
+    if format != "image/png" && format != "image/jpg" && format != "application/pdf" {
+        return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Unsupported file format"})
+    }
+
+    // TODO: process with Textract
+    // TODO: store ticket information
+
+    return c.JSON(http.StatusOK, echo.Map{"message": "Ticket created successfully"})
+}
+
 func main() {
     err := godotenv.Load(".env")
     if err != nil {
@@ -71,5 +93,6 @@ func main() {
     e := echo.New()
     e.Use(middleware.CORS())
     e.POST("/login/google", login_google)
+    e.POST("/ticket", create_ticket)
     e.Logger.Fatal(e.Start(":8000"))
 }
