@@ -21,7 +21,41 @@ To achieve these goals, a frontend is required to interact with the final user, 
 Concerning which stack to use, it seems React and Golang can be a good option: they both have a great community behind and are well known.
 
 ## API
-TODO
+### Login ###
+First of all, a user needs to authenticate before sending any kind of information
+The simplest way to do it is using third party auth services, like google. There are a lot of libraries and good SDK for Golang.
+Login in Google is assumpted to be done in the frontend, therefore an auth token is returned (really a JWT token with user information) once the user is logged, and can be used to verify the identity.
+If token is not valid, an error is returned during login process.
+
+** Request **
+```json
+POST /login/google
+
+{
+  "token": "..."}
+}
+```
+
+** Response OK **
+```json
+HTTP 200
+
+{
+ "user": {
+   "name": "John",
+   "picture_url": "http://...",
+ }
+}
+```
+
+** Response error **
+```json
+HTTP 422
+
+{
+  "message": "There was an error validating auth token"
+}
+```
 
 ## Frontend
 TODO
