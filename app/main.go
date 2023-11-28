@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -20,8 +22,9 @@ type Login struct {
 }
 
 type UserProfile struct {
-	Name        string `json:"name"`
-	Picture_url string `json:"picture_url"`
+	Name       string `json:"name"`
+	PictureUrl string `json:"picture_url"`
+	AuthToken  string `json:"auth_token"`
 }
 
 type ErrorMessage struct {
@@ -30,6 +33,7 @@ type ErrorMessage struct {
 
 var google_client_id string
 var db *sql.DB
+var jwt_signature string
 
 func NewDB(adapter string, name string) (*sql.DB, error) {
 	db, err := sql.Open(adapter, name)
@@ -120,6 +124,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 		panic("Error opening database")
+	}
+
+	jwt_signature = os.Getenv("JWT_SIGNATURE")
+	if len(jwt_signature) == 0 {
+		panic("Missing jwt signature")
 	}
 
 	e := echo.New()

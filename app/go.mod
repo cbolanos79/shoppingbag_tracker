@@ -8,6 +8,8 @@ require (
 	google.golang.org/api v0.152.0
 )
 
+require github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
+
 require (
 	cloud.google.com/go/compute v1.23.3 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
