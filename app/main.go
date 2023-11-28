@@ -68,7 +68,7 @@ func checkIfGoogleUidExists(google_uid string) bool {
 // Receive credential for Google login and validate it agains Google API
 // If credential is valid, extract name and profile picture url
 // Else, returns an error
-func login_google(c echo.Context) error {
+func LoginGoogle(c echo.Context) error {
 	login := Login{}
 	c.Bind(&login)
 
@@ -133,7 +133,6 @@ func main() {
 
 	e := echo.New()
 	e.Use(middleware.CORS())
-	e.POST("/login/google", login_google)
-	//e.POST("/ticket", create_ticket)
+	e.POST("/login/google", LoginGoogle)
 	e.Logger.Fatal(e.Start(":8000"))
 }
