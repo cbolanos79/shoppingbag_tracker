@@ -70,6 +70,7 @@ func login_google(c echo.Context) error {
 
 	// Return HTTP 422 if credential value is not set
 	if len(login.Credential) == 0 {
+		log.Println("Missing credential value")
 		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Missing credential value"})
 	}
 
@@ -78,14 +79,20 @@ func login_google(c echo.Context) error {
 
 	// Return HTTP 422 if there was any error
 	if err != nil {
-        log.Println("Error validating user in google: %v", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"error": "Error validating user"})
+		log.Println("Error validating user in google: %v", err)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error validating user"})
 	}
 
-    // Check if token is expired                                                                                                          
-    if time.Now().Unix() > payload.Expires {
-        return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Expired credential"})
-     }
+	// Check if user exists
+	if !checkIfGoogleUidExists(payload.Subject) {
+		log.Printf("User %s not found", payload.Subject)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "User not found"})
+	}
+
+	// Check if token is expired
+	if time.Now().Unix() > payload.Expires {
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Expired credential"})
+	}
 
 	userProfile := UserProfile{payload.Claims["name"].(string), payload.Claims["picture"].(string)}
 
