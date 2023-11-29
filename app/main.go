@@ -5,10 +5,16 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	mime "mime/multipart"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/textract"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 	echojwt "github.com/labstack/echo-jwt/v4"
@@ -32,9 +38,25 @@ type ErrorMessage struct {
 	Message string `json:"message"`
 }
 
+type TicketItem struct {
+	ID        int64
+	Name      string
+	Quantity  int64
+	Price     float64
+	UnitPrice float64
+}
+
+type Ticket struct {
+	ID          int64
+	Supermarket string
+	Total       float64
+	Items       []TicketItem
+}
+
 var google_client_id string
 var db *sql.DB
 var jwt_signature string
+var aws_session *session.Session
 
 func NewDB(adapter string, name string) (*sql.DB, error) {
 	db, err := sql.Open(adapter, name)
@@ -53,6 +75,81 @@ func NewDB(adapter string, name string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+// Auxiliar function to search string into an array of textract.ExpenseField
+func SearchExpense(item []*textract.ExpenseField, s string) string {
+	for _, item := range item {
+		if *item.Type.Text == s {
+			return *item.ValueDetection.Text
+		}
+	}
+	return ""
+}
+
+// Analyze ticket on Textract using OCR and AI, and get in response structured information about receipt
+func ParseReceipt(file mime.File, size int64) (*Ticket, error) {
+
+	// Create object to e
+	svc := textract.New(aws_session)
+
+	// Allocate enough space to read file
+	b := make([]byte, size)
+	_, err := file.Read(b)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Make request to Textract in order to analyze data
+	res, err := svc.AnalyzeExpense(&textract.AnalyzeExpenseInput{
+		Document: &textract.Document{
+			Bytes: b,
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Get supermarket name
+	s := *res.ExpenseDocuments[0].SummaryFields[0].ValueDetection.Text
+	sres := strings.Split(s, "\n")
+	ticket := &Ticket{}
+	ticket.Supermarket = sres[0]
+
+	// Get total amount from receipt
+	total, err := strconv.ParseFloat(strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL"), ",", ".", -1), 64)
+	if err != nil {
+		total = -1
+	}
+
+	ticket.Total = total
+
+	// Iterate over each concept from receipt
+	for _, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
+		name := SearchExpense(line_item.LineItemExpenseFields, "ITEM")
+
+		quantity, err := strconv.ParseInt(SearchExpense(line_item.LineItemExpenseFields, "QUANTITY"), 10, 64)
+		if err != nil {
+			quantity = -1
+		}
+
+		price, err := strconv.ParseFloat(strings.Replace(SearchExpense(line_item.LineItemExpenseFields, "PRICE"), ",", ".", -1), 64)
+		if err != nil {
+			price = -1
+		}
+
+		unit_price, err := strconv.ParseFloat(strings.Replace(SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE"), ",", ".", -1), 64)
+		if err != nil {
+			unit_price = -1
+		}
+
+		// Add each item to receipt
+		ticket.Items = append(ticket.Items, TicketItem{Name: name, Quantity: quantity, Price: price, UnitPrice: unit_price})
+	}
+
+	return ticket, nil
 }
 
 // Check if given google id user exists in database
@@ -142,6 +239,18 @@ func main() {
 	jwt_signature = os.Getenv("JWT_SIGNATURE")
 	if len(jwt_signature) == 0 {
 		panic("Missing jwt signature")
+	}
+
+	aws_session, err = session.NewSessionWithOptions(session.Options{
+		Profile: "textract",
+		// Provide SDK Config options, such as Region.
+		Config: aws.Config{
+			Region: aws.String("us-west-1"),
+		},
+	})
+
+	if err != nil {
+		panic(err)
 	}
 
 	e := echo.New()

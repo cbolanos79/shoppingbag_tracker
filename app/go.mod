@@ -3,14 +3,12 @@ module app
 go 1.20
 
 require (
+	github.com/aws/aws-sdk-go v1.48.7
+	github.com/golang-jwt/jwt/v5 v5.1.0
 	github.com/joho/godotenv v1.5.1
+	github.com/labstack/echo-jwt/v4 v4.2.0
 	github.com/labstack/echo/v4 v4.11.3
 	google.golang.org/api v0.152.0
-)
-
-require (
-	github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
-	github.com/labstack/echo-jwt/v4 v4.2.0 // indirect
 )
 
 require (
