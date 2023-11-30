@@ -28,7 +28,7 @@ func main() {
 		log.Fatal("Empty value for DB_NAME")
 	}
 
-	_, err = model.NewDB()
+	db, err := model.NewDB()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,6 +37,8 @@ func main() {
 	if len(jwt_signature) == 0 {
 		log.Fatal("Missing jwt signature")
 	}
+
+	model.InitDB(db)
 
 	e := echo.New()
 	e.Use(middleware.CORS())
