@@ -150,16 +150,25 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
 	if err != nil {
 		return -1, err
 	}
+	receipt.ID = id
 
 	// Create receipt items
-	for _, item := range receipt.Items {
+	for index, item := range receipt.Items {
 		// Create receipt item
-		_, err := db.Exec("INSERT INTO receipt_items (quantity, name, unit_price, price) VALUES (?, ?, ?, ?)",
-			item.Quantity, item.Name, item.UnitPrice, item.Price)
+		res, err := db.Exec("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)",
+			id, item.Quantity, item.Name, item.UnitPrice, item.Price)
 
 		if err != nil {
 			return -1, err
 		}
+
+		item_id, err := res.LastInsertId()
+		if err != nil {
+			return -1, err
+		}
+
+		// Update item ID in receipt object
+		receipt.Items[index].ID = item_id
 	}
 
 	tx.Commit()
