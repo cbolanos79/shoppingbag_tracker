@@ -141,7 +141,7 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
 	defer tx.Rollback()
 
 	// Create receipt
-	res, err := db.Exec("INSERT INTO receipts (user_id, supermarket, date, total) VALUES (?, ?, ?)", receipt.UserID, receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Total)
+	res, err := db.Exec("INSERT INTO receipts (user_id, supermarket, date, total) VALUES (?, ?, ?, ?)", receipt.UserID, receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Total)
 	if err != nil {
 		return -1, err
 	}
