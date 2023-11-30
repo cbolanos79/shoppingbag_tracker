@@ -20,6 +20,7 @@ type ReceiptItem struct {
 
 type Receipt struct {
 	ID          int64
+	UserID      int64
 	Supermarket string
 	Date        time.Time
 	Total       float64
@@ -60,6 +61,7 @@ func InitDB(db *sql.DB) error {
 	  
 	CREATE TABLE IF NOT EXISTS receipts (
 		id INTEGER NOT NULL PRIMARY KEY,
+		user_id int,
 		supermarket varchar(255),
 		date date,
 		total decimal(6, 2)
