@@ -7,11 +7,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	model "github.com/cbolanos79/shoppingbag_tracker/internal/model"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/labstack/echo/v4"
 	"google.golang.org/api/idtoken"
 )
@@ -96,4 +98,38 @@ func LoginGoogle(c echo.Context) error {
 
 	// Return HTTP 200 if success
 	return c.JSON(http.StatusOK, &userProfile)
+}
+
+// Check if user from jwt exists or stop if not
+func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		token := c.Get("user").(*jwt.Token)
+
+		user_id, err := token.Claims.GetSubject()
+		if err != nil {
+			log.Println("CreateReceipt - Error decoding token\n", err)
+			return echo.ErrUnauthorized
+		}
+
+		db, err := model.NewDB()
+		if err != nil {
+			log.Println("CreateReceipt - Error decoding token\n", err)
+			return echo.ErrUnauthorized
+		}
+
+		user_idd, err := strconv.Atoi(user_id)
+		if err != nil {
+			log.Println("CreateReceipt - Error decoding token\n", err)
+			return echo.ErrUnauthorized
+		}
+
+		user, err := model.FindUserById(db, user_idd)
+		if user == nil || err != nil {
+			log.Println("CreateReceipt - User not found\n", err)
+			return echo.ErrUnauthorized
+		}
+
+		c.Set("user_id", user)
+		return next(c)
+	}
 }
