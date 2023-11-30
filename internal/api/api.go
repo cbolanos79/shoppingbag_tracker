@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,17 +26,6 @@ type UserProfile struct {
 	Name       string `json:"name"`
 	PictureUrl string `json:"picture_url"`
 	AuthToken  string `json:"auth_token"`
-}
-
-// Check if given google id user exists in database
-func FindUserByGoogleID(db *sql.DB, google_uid string) (*model.User, error) {
-	row := db.QueryRow("SELECT * FROM users WHERE google_uid = ?", google_uid)
-
-	user := model.User{}
-	if err := row.Scan(&user); err != nil {
-		return nil, err
-	}
-	return &user, nil
 }
 
 // Receive credential for Google login and validate it agains Google API
