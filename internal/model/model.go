@@ -69,6 +69,7 @@ func InitDB(db *sql.DB) error {
 
 	CREATE TABLE IF NOT EXISTS receipt_items (
 		id INTEGER NOT NULL PRIMARY KEY,
+		receipt_id int,
 		name varchar(255),
 		quantity int,
 		price decimal(6, 2),
