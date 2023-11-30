@@ -63,7 +63,15 @@ func InitDB(db *sql.DB) error {
 		supermarket varchar(255),
 		date date,
 		total decimal(6, 2)
-	) `
+	);
+
+	CREATE TABLE IF NOT EXISTS receipt_items (
+		id INTEGER NOT NULL PRIMARY KEY,
+		name varchar(255),
+		quantity int,
+		price decimal(6, 2),
+		unit_price decimal(6, 2)
+	);`
 
 	if _, err := db.Exec(create); err != nil {
 		return err
@@ -95,4 +103,45 @@ func SearchReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date t
 	}
 
 	return &receipt, nil
+}
+
+// Create a new receipt in the database and return record ID or error if could not be created
+func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
+	// Check if receipt already exists
+	ereceipt, err := SearchReceiptBySupermarketDateAmount(db, receipt.Supermarket, receipt.Date, receipt.Total)
+	if ereceipt != nil {
+		return -1, errors.New("Receipt already exists")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return -1, err
+	}
+
+	defer tx.Rollback()
+
+	// Create receipt
+	res, err := db.Exec("INSERT INTO receipts (supermarket, date, total) VALUES (?, ?, ?)", receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Total)
+	if err != nil {
+		return -1, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return -1, err
+	}
+
+	// Create receipt items
+	for _, item := range receipt.Items {
+		// Create receipt item
+		_, err := db.Exec("INSERT INTO receipt_items (quantity, name, unit_price, price) VALUES (?, ?, ?, ?)",
+			item.Quantity, item.Name, item.UnitPrice, item.Price)
+
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	tx.Commit()
+	return id, nil
 }
