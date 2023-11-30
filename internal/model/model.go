@@ -11,19 +11,19 @@ import (
 )
 
 type ReceiptItem struct {
-	ID        int64
-	Name      string
-	Quantity  int64
-	Price     float64
-	UnitPrice float64
+	ID        int64   `db:"id"`
+	Name      string  `db:"name"`
+	Quantity  int64   `db:"quantity"`
+	Price     float64 `db:"price"`
+	UnitPrice float64 `db:"unit_price"`
 }
 
 type Receipt struct {
-	ID          int64
-	UserID      int64
-	Supermarket string
-	Date        time.Time
-	Total       float64
+	ID          int64     `db:"id"`
+	UserID      int64     `db:"user_id"`
+	Supermarket string    `db:"supermarket"`
+	Date        time.Time `db:"date"`
+	Total       float64   `db:"total"`
 	Items       []ReceiptItem
 }
 
