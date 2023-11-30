@@ -8,6 +8,7 @@ import (
 	"github.com/cbolanos79/shoppingbag_tracker/internal/model"
 
 	"github.com/joho/godotenv"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -42,6 +43,8 @@ func main() {
 
 	e := echo.New()
 	e.Use(middleware.CORS())
+
+	e.POST("/receipt", api.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), api.UserMiddleware)
 	e.POST("/login/google", api.LoginGoogle)
 	e.Logger.Fatal(e.Start(":8000"))
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	model "github.com/cbolanos79/shoppingbag_tracker/internal/model"
+	"github.com/cbolanos79/shoppingbag_tracker/internal/receipt_scanner"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -98,6 +99,52 @@ func LoginGoogle(c echo.Context) error {
 
 	// Return HTTP 200 if success
 	return c.JSON(http.StatusOK, &userProfile)
+}
+
+// Create a receipt from given file using a valid user, or return error with status 422 if can not create
+// Receipt is analyzed by Textract, and then store results into database
+func CreateReceipt(c echo.Context) error {
+	// By default, token is stored in user key
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		log.Println("CreateReceipt - Error processing form file\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error creating token for user"})
+	}
+
+	session, err := receipt_scanner.NewAwsSession()
+	if err != nil {
+		log.Println("CreateReceipt - Error creating new aws session\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error connecting to aws"})
+	}
+
+	db, err := model.NewDB()
+	if err != nil {
+		log.Println("CreateReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error connecting to database"})
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		log.Println("CreateReceipt - Error opening file\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error opening file"})
+	}
+
+	receipt, err := receipt_scanner.Scan(session, f, file.Size)
+	if err != nil {
+		log.Println("CreateReceipt - Error opening file\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error analyzing file"})
+	}
+
+	user := c.Get("user_id").(*model.User)
+	receipt.UserID = user.ID
+
+	_, err = model.CreateReceipt(db, receipt)
+	if err != nil {
+		log.Println("CreateReceipt - Error creating receipt\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error creating receipt"})
+	}
+	return c.JSON(http.StatusOK, echo.Map{"message": "Receipt created successfully", "receipt": receipt})
 }
 
 // Check if user from jwt exists or stop if not
