@@ -69,6 +69,7 @@ func LoginGoogle(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error accessing database"})
 	}
+	defer db.Close()
 
 	user, err := model.FindUserByGoogleUid(db, payload.Subject)
 	if err != nil {
@@ -123,6 +124,7 @@ func CreateReceipt(c echo.Context) error {
 		log.Println("CreateReceipt - Error connecting to database\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error connecting to database"})
 	}
+	defer db.Close()
 
 	f, err := file.Open()
 	if err != nil {
@@ -163,6 +165,7 @@ func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			log.Println("CreateReceipt - Error decoding token\n", err)
 			return echo.ErrUnauthorized
 		}
+		defer db.Close()
 
 		user_idd, err := strconv.Atoi(user_id)
 		if err != nil {
