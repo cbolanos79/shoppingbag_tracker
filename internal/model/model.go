@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -20,7 +21,7 @@ type ReceiptItem struct {
 type Receipt struct {
 	ID          int64
 	Supermarket string
-	Date        int64
+	Date        time.Time
 	Total       float64
 	Items       []ReceiptItem
 }
