@@ -81,7 +81,7 @@ func InitDB(db *sql.DB) error {
 }
 
 // Check if given google id user exists in database
-func SearchUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
+func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 	row := db.QueryRow("SELECT * FROM users WHERE google_uid = ?", google_uid)
 
 	user := User{}
@@ -94,7 +94,7 @@ func SearchUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 }
 
 // Check if exists a receipt for given supermarket, date and amount (these values should be unique)
-func SearchReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date time.Time, total float64) (*Receipt, error) {
+func FindReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date time.Time, total float64) (*Receipt, error) {
 	row := db.QueryRow("SELECT * FROM receipts WHERE supermarket LIKE ? AND date = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
 
 	receipt := Receipt{}
@@ -108,7 +108,7 @@ func SearchReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date t
 // Create a new receipt in the database and return record ID or error if could not be created
 func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
 	// Check if receipt already exists
-	ereceipt, err := SearchReceiptBySupermarketDateAmount(db, receipt.Supermarket, receipt.Date, receipt.Total)
+	ereceipt, err := FindReceiptBySupermarketDateAmount(db, receipt.Supermarket, receipt.Date, receipt.Total)
 	if ereceipt != nil {
 		return -1, errors.New("Receipt already exists")
 	}

@@ -67,7 +67,7 @@ func LoginGoogle(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error accessing database"})
 	}
 
-	user, err := model.SearchUserByGoogleUid(db, payload.Subject)
+	user, err := model.FindUserByGoogleUid(db, payload.Subject)
 	if err != nil {
 		log.Printf("GoogleLogin - User %s not found, error %v\n", payload.Subject, err)
 		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "User not found"})
