@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -55,4 +56,54 @@ func TestUserFindByIdSuccess(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("There were unfulfilled expectations: %s", err)
 	}
+}
+
+func TestFindUserByGoogleIdNotFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	rows := mock.NewRows([]string{"id", "google_uid"})
+
+	mock.ExpectQuery("SELECT \\* FROM users WHERE google_uid = ?").
+		WithArgs("12345").
+		WillReturnRows(rows)
+
+	user, err := FindUserByGoogleUid(db, "12345")
+	if user != nil {
+		t.Fatalf("User should be nil for non existing google_uid")
+	}
+
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+}
+
+func TestFindUserByGoogleIdFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	rows := mock.NewRows([]string{"id", "google_uid"}).AddRow(1, "12345")
+
+	mock.ExpectQuery("SELECT \\* FROM users WHERE google_uid = ?").
+		WithArgs("12345").
+		WillReturnRows(rows)
+
+	user, err := FindUserByGoogleUid(db, "12345")
+	if user == nil {
+		t.Fatalf("User should not be nil for existing google_uid")
+	}
+
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
 }
