@@ -4,6 +4,7 @@ import (
 	mime "mime/multipart"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -67,6 +68,16 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	sres := strings.Split(s, "\n")
 	receipt := &model.Receipt{}
 	receipt.Supermarket = sres[0]
+
+	receipt_date := strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "INVOICE_RECEIPT_DATE"), ",", ".", -1)
+
+	date, err := time.Parse("02/01/2006", receipt_date)
+
+	if err != nil {
+		return nil, err
+	}
+
+	receipt.Date = date
 
 	// Get total amount from receipt
 	total, err := strconv.ParseFloat(strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL"), ",", ".", -1), 64)
