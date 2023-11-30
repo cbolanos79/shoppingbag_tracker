@@ -80,6 +80,18 @@ func InitDB(db *sql.DB) error {
 	return nil
 }
 
+// Find user by given ID and return User instance or error
+func FindUserById(db *sql.DB, user_id int) (*User, error) {
+	row := db.QueryRow("SELECT * FROM users WHERE id = ?", user_id)
+
+	user := User{}
+	if err := row.Scan(&user.ID, &user.GoogleUID); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 // Check if given google id user exists in database
 func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 	row := db.QueryRow("SELECT * FROM users WHERE google_uid = ?", google_uid)
