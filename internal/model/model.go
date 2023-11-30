@@ -84,3 +84,15 @@ func SearchUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 	}
 	return &user, nil
 }
+
+// Check if exists a receipt for given supermarket, date and amount (these values should be unique)
+func SearchReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date time.Time, total float64) (*Receipt, error) {
+	row := db.QueryRow("SELECT * FROM receipts WHERE supermarket LIKE ? AND date = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
+
+	receipt := Receipt{}
+	if err := row.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &receipt.Total); err != nil {
+		return nil, err
+	}
+
+	return &receipt, nil
+}
