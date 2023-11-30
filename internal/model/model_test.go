@@ -2,7 +2,9 @@ package model
 
 import (
 	"database/sql"
+	"regexp"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 )
@@ -106,4 +108,65 @@ func TestFindUserByGoogleIdFound(t *testing.T) {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
+}
+
+func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+	ts := time.Now()
+
+	rows := mock.NewRows([]string{"id", "supermarket", "date", "total"})
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM receipts WHERE supermarket LIKE ? AND date = DATE(?) AND total = ?")).
+		WithArgs("%other%", ts.Format(time.RFC3339), 543.21).
+		WillReturnRows(rows)
+
+	receipt, err := FindReceiptBySupermarketDateAmount(db, "other", ts, 543.21)
+
+	if receipt != nil {
+		t.Fatalf("Receipt should not be nil for not existing params")
+	}
+
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("There were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+	ts := time.Now()
+
+	rows := mock.NewRows([]string{"id", "supermarket", "date", "total"}).
+		AddRow(1, "Any", ts, 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM receipts WHERE supermarket LIKE ? AND date = DATE(?) AND total = ?")).
+		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
+		WillReturnRows(rows)
+
+	receipt, err := FindReceiptBySupermarketDateAmount(db, "Any", ts, 123.45)
+
+	if err != nil && err != sql.ErrNoRows {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+
+	if receipt == nil {
+		t.Fatalf("Receipt should not be nil for existing params")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("There were unfulfilled expectations: %s", err)
+	}
 }
