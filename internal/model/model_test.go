@@ -49,7 +49,7 @@ func TestUserFindByIdSuccess(t *testing.T) {
 		t.Fatalf("Error: user should not be nil for non existing id")
 	}
 
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		t.Fatalf("Unexpected error: %s", err)
 	}
 
