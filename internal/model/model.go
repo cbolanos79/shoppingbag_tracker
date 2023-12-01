@@ -123,21 +123,21 @@ func FindReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date tim
 }
 
 // Create a new receipt in the database and return record ID or error if could not be created
-func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
+func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 	// Check if receipt already exists
 	ereceipt, err := FindReceiptBySupermarketDateAmount(db, receipt.Supermarket, receipt.Date, receipt.Total)
 
-	if err != nil {
-		return -1, err
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
 	}
 
-	if ereceipt != nil {
-		return -1, errors.New("Receipt already exists")
+	if ereceipt != nil && ereceipt.UserID == receipt.UserID {
+		return nil, errors.New("Receipt already exists")
 	}
 
 	tx, err := db.Begin()
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	defer tx.Rollback()
@@ -145,12 +145,12 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
 	// Create receipt
 	res, err := db.Exec("INSERT INTO receipts (user_id, supermarket, date, total) VALUES (?, ?, ?, ?)", receipt.UserID, receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Total)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	receipt.ID = id
 
@@ -161,12 +161,12 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
 			id, item.Quantity, item.Name, item.UnitPrice, item.Price)
 
 		if err != nil {
-			return -1, err
+			return nil, err
 		}
 
 		item_id, err := res.LastInsertId()
 		if err != nil {
-			return -1, err
+			return nil, err
 		}
 
 		// Update item ID in receipt object
@@ -174,5 +174,5 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (int64, error) {
 	}
 
 	tx.Commit()
-	return id, nil
+	return receipt, nil
 }
