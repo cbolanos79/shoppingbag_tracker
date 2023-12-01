@@ -23,7 +23,7 @@ type Receipt struct {
 	ID          int64     `db:"id"`
 	UserID      int64     `db:"user_id"`
 	Supermarket string    `db:"supermarket"`
-	Date        time.Time `db:"date"`
+	Date        time.Time `db:"receipt_date"`
 	Total       float64   `db:"total"`
 	Items       []ReceiptItem
 }
@@ -64,7 +64,7 @@ func InitDB(db *sql.DB) error {
 		id INTEGER NOT NULL PRIMARY KEY,
 		user_id int,
 		supermarket varchar(255),
-		date date,
+		receipt_date date,
 		total decimal(6, 2)
 	);
 
@@ -111,10 +111,11 @@ func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 
 // Check if exists a receipt for given supermarket, date and amount (these values should be unique)
 func FindReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date time.Time, total float64) (*Receipt, error) {
-	row := db.QueryRow("SELECT * FROM receipts WHERE supermarket LIKE ? AND date = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
+	row := db.QueryRow("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
 
 	receipt := Receipt{}
-	if err := row.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &receipt.Total); err != nil {
+	err := row.Scan(&receipt.ID, &receipt.UserID, &receipt.Supermarket, &receipt.Date, &receipt.Total)
+	if err != nil {
 		return nil, err
 	}
 
