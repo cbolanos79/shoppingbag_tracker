@@ -12,6 +12,7 @@ import (
 
 type ReceiptItem struct {
 	ID        int64   `db:"id"`
+	ReceiptID int64   `db:"receipt_id"`
 	Name      string  `db:"name"`
 	Quantity  int64   `db:"quantity"`
 	Price     float64 `db:"price"`
