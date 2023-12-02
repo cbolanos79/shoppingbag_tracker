@@ -233,7 +233,7 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Total: 123.45, Items: items}
 
 	// Insert receipt
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, date, total) VALUES (?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, total) VALUES (?, ?, ?, ?)")).
 		WithArgs(2, "Any", ts.Format(time.RFC3339), 123.45).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
@@ -286,7 +286,7 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Total: 123.45, Items: items}
 
 	// Insert receipt
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, date, total) VALUES (?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, total) VALUES (?, ?, ?, ?)")).
 		WithArgs(2, "Any", ts.Format(time.RFC3339), 123.45).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
