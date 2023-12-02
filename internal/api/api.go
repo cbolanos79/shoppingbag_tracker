@@ -28,6 +28,11 @@ type UserProfile struct {
 	AuthToken  string `json:"auth_token"`
 }
 
+type ErrorMessage struct {
+	Message string   `json:"message"`
+	Errors  []string `json:"errors"`
+}
+
 // Receive credential for Google login and validate it agains Google API
 // If credential is valid, extract name and profile picture url
 // Else, returns an error
@@ -49,25 +54,25 @@ func LoginGoogle(c echo.Context) error {
 	// Return HTTP 422 if there was any error
 	if err != nil {
 		log.Printf("LoginGoogle - Error validating user in google: %v\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error validating user"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error validating user", []string{err.Error()}})
 	}
 
 	// Check if user exists
 	db, err := model.NewDB()
 	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error accessing database"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error accessing database", []string{err.Error()}})
 	}
 	defer db.Close()
 
 	user, err := model.FindUserByGoogleUid(db, payload.Subject)
 	if err != nil {
 		log.Printf("GoogleLogin - User %s not found, error %v\n", payload.Subject, err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "User not found"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"User not found", []string{err.Error()}})
 	}
 
 	// Check if token is expired
 	if time.Now().Unix() > payload.Expires {
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Expired credential"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Expired credential", []string{err.Error()}})
 	}
 
 	claims := jwt.RegisteredClaims{
@@ -81,7 +86,7 @@ func LoginGoogle(c echo.Context) error {
 	ss, err := token.SignedString([]byte(jwt_signature))
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Error signing JWT token for user %s", payload.Subject), err.Error())
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error creating token for user"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating token for user", []string{err.Error()}})
 	}
 
 	userProfile := UserProfile{payload.Claims["name"].(string), payload.Claims["picture"].(string), ss}
@@ -98,32 +103,32 @@ func CreateReceipt(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Println("CreateReceipt - Error processing form file\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error creating token for user"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating token for user", []string{err.Error()}})
 	}
 
 	session, err := receipt_scanner.NewAwsSession()
 	if err != nil {
 		log.Println("CreateReceipt - Error creating new aws session\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error connecting to aws"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to aws", []string{err.Error()}})
 	}
 
 	db, err := model.NewDB()
 	if err != nil {
 		log.Println("CreateReceipt - Error connecting to database\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error connecting to database"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
 	}
 	defer db.Close()
 
 	f, err := file.Open()
 	if err != nil {
 		log.Println("CreateReceipt - Error opening file\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error opening file"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error opening file", []string{err.Error()}})
 	}
 
 	receipt, err := receipt_scanner.Scan(session, f, file.Size)
 	if err != nil {
 		log.Println("CreateReceipt - Error opening file\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error analyzing file"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error analyzing file", []string{err.Error()}})
 	}
 
 	user := c.Get("user_id").(*model.User)
@@ -132,7 +137,7 @@ func CreateReceipt(c echo.Context) error {
 	_, err = model.CreateReceipt(db, receipt)
 	if err != nil {
 		log.Println("CreateReceipt - Error creating receipt\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, echo.Map{"message": "Error creating receipt"})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating receipt", []string{err.Error()}})
 	}
 	return c.JSON(http.StatusOK, echo.Map{"message": "Receipt created successfully", "receipt": receipt})
 }
