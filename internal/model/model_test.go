@@ -121,7 +121,7 @@ func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 
 	rows := mock.NewRows([]string{"id", "supermarket", "date", "total"})
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%other%", ts.Format(time.RFC3339), 543.21).
 		WillReturnRows(rows)
 
@@ -152,7 +152,7 @@ func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 	rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"}).
 		AddRow(1, 1, "Any", ts, 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(rows)
 
@@ -187,7 +187,7 @@ func TestCreateDuplicatedReceipt(t *testing.T) {
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"}).
 		AddRow(1, 1, "Any", ts, 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -221,7 +221,7 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"}).
 		AddRow(1, 1, "Any", ts, 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -274,7 +274,7 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"})
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
