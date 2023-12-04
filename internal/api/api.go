@@ -103,7 +103,7 @@ func CreateReceipt(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Println("CreateReceipt - Error processing form file\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating token for user", []string{err.Error()}})
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error opening file", []string{err.Error()}})
 	}
 
 	session, err := receipt_scanner.NewAwsSession()
