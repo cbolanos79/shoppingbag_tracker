@@ -70,6 +70,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	receipt.Supermarket = sres[0]
 
 	receipt_date := strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "INVOICE_RECEIPT_DATE"), ",", ".", -1)
+	receipt_date = strings.Replace(receipt_date, "-", "/", -1)
 
 	date, err := time.Parse("02/01/2006", receipt_date)
 
