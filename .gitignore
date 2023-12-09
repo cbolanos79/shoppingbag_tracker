@@ -22,3 +22,6 @@ go.work
 
 # Misc files
 main
+db
+.env
+*.sh
