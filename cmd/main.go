@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -47,5 +48,5 @@ func main() {
 
 	e.POST("/receipt", api.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), api.UserMiddleware)
 	e.POST("/login/google", api.LoginGoogle)
-	e.Logger.Fatal(e.Start(":8000"))
+	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", os.Getenv("PORT"))))
 }
