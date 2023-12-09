@@ -1,0 +1,26 @@
+version: '3'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./db:/app/db
+    environment:
+      JWT_SIGNATURE: ${JWT_SIGNATURE}
+      DB_NAME: ${DB_NAME}
+      DB_ADAPTER: ${DB_ADAPTER}
+      GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+    environment:
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+      VITE_API_UR: ${VITE_API_URL}
