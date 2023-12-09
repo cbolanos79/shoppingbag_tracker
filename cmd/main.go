@@ -42,6 +42,7 @@ func main() {
 	model.InitDB(db)
 
 	e := echo.New()
+	e.Use(middleware.Logger())
 	e.Use(middleware.CORS())
 
 	e.POST("/receipt", api.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), api.UserMiddleware)
