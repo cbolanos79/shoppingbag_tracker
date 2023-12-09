@@ -6,20 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/textract"
 	"github.com/cbolanos79/shoppingbag_tracker/internal/model"
 )
 
 func NewAwsSession() (*session.Session, error) {
-	aws_session, err := session.NewSessionWithOptions(session.Options{
-		Profile: "textract",
-		// Provide SDK Config options, such as Region.
-		Config: aws.Config{
-			Region: aws.String("us-west-1"),
-		},
-	})
+	aws_session, err := session.NewSession()
 
 	if err != nil {
 		return nil, err
