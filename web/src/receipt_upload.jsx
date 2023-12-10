@@ -2,6 +2,7 @@ import { Component } from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Logout from './logout.jsx'
+import { CLIENT_ID, API_URL } from './constants.js'
 
 /*
   Component to render a form which sends a post request with form data,
@@ -31,7 +32,7 @@ export default class ReceiptUpload extends Component {
         const formData = new FormData()
         formData.append('file', file)
 
-        await fetch("http://localhost:8000/receipt",
+        await fetch(`${API_URL}/receipt`,
             {
                 method: "POST",
                 mode: "cors",
