@@ -14,7 +14,7 @@ type ReceiptItem struct {
 	ID        int64   `db:"id"`
 	ReceiptID int64   `db:"receipt_id"`
 	Name      string  `db:"name"`
-	Quantity  int64   `db:"quantity"`
+	Quantity  float64   `db:"quantity"`
 	Price     float64 `db:"price"`
 	UnitPrice float64 `db:"unit_price"`
 }
@@ -72,7 +72,7 @@ func InitDB(db *sql.DB) error {
 		id INTEGER NOT NULL PRIMARY KEY,
 		receipt_id int,
 		name varchar(255),
-		quantity int,
+		quantity float,
 		price decimal(6, 2),
 		unit_price decimal(6, 2)
 	);`
