@@ -85,7 +85,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	for _, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
 		name := SearchExpense(line_item.LineItemExpenseFields, "ITEM")
 
-		quantity, err := strconv.ParseInt(SearchExpense(line_item.LineItemExpenseFields, "QUANTITY"), 10, 64)
+		quantity, err := strconv.ParseFloat(strings.Replace(SearchExpense(line_item.LineItemExpenseFields, "QUANTITY"), ",", ".", -1), 64)
 		if err != nil {
 			quantity = -1
 		}
