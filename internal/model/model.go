@@ -14,7 +14,7 @@ type ReceiptItem struct {
 	ID        int64   `db:"id"`
 	ReceiptID int64   `db:"receipt_id"`
 	Name      string  `db:"name"`
-	Quantity  float64   `db:"quantity"`
+	Quantity  float64 `db:"quantity"`
 	Price     float64 `db:"price"`
 	UnitPrice float64 `db:"unit_price"`
 }
@@ -25,6 +25,7 @@ type Receipt struct {
 	Supermarket string    `db:"supermarket"`
 	Date        time.Time `db:"receipt_date"`
 	Total       float64   `db:"total"`
+	Currency    string    `db:"currency"`
 	Items       []ReceiptItem
 }
 
@@ -65,6 +66,7 @@ func InitDB(db *sql.DB) error {
 		user_id int,
 		supermarket varchar(255),
 		receipt_date date,
+    	currency varchar(3),
 		total decimal(6, 2)
 	);
 
@@ -111,10 +113,10 @@ func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 
 // Check if exists a receipt for given supermarket, date and amount (these values should be unique)
 func FindReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date time.Time, total float64) (*Receipt, error) {
-	row := db.QueryRow("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
+	row := db.QueryRow("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
 
 	receipt := Receipt{}
-	err := row.Scan(&receipt.ID, &receipt.UserID, &receipt.Supermarket, &receipt.Date, &receipt.Total)
+	err := row.Scan(&receipt.ID, &receipt.UserID, &receipt.Supermarket, &receipt.Date, &receipt.Currency, &receipt.Total)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +145,7 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 	defer tx.Rollback()
 
 	// Create receipt
-	res, err := db.Exec("INSERT INTO receipts (user_id, supermarket, receipt_date, total) VALUES (?, ?, ?, ?)", receipt.UserID, receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Total)
+	res, err := db.Exec("INSERT INTO receipts (user_id, supermarket, receipt_date, currency, total) VALUES (?, ?, ?, ?, ?)", receipt.UserID, receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Currency, receipt.Total)
 	if err != nil {
 		return nil, err
 	}

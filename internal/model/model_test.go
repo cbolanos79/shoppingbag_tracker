@@ -119,9 +119,9 @@ func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 	defer db.Close()
 	ts := time.Now()
 
-	rows := mock.NewRows([]string{"id", "supermarket", "date", "total"})
+	rows := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"})
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%other%", ts.Format(time.RFC3339), 543.21).
 		WillReturnRows(rows)
 
@@ -149,10 +149,10 @@ func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 	defer db.Close()
 	ts := time.Now()
 
-	rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"}).
-		AddRow(1, 1, "Any", ts, 123.45)
+	rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, 1, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(rows)
 
@@ -184,10 +184,10 @@ func TestCreateDuplicatedReceipt(t *testing.T) {
 
 	//receipt := Receipt{UserID: 1, Supermarket: "Any", Date: ts, Total: 100.0}
 
-	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"}).
-		AddRow(1, 1, "Any", ts, 123.45)
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, 1, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -218,10 +218,10 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 
 	ts := time.Now()
 
-	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"}).
-		AddRow(1, 1, "Any", ts, 123.45)
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, 1, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -230,20 +230,20 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 	items := []ReceiptItem{{Name: "Item 1", Quantity: 1, Price: 10, UnitPrice: 11},
 		{Name: "Item 2", Quantity: 2, Price: 20, UnitPrice: 22}}
 
-	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Total: 123.45, Items: items}
+	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Currency: "EUR", Total: 123.45, Items: items}
 
 	// Insert receipt
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, total) VALUES (?, ?, ?, ?)")).
-		WithArgs(2, "Any", ts.Format(time.RFC3339), 123.45).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, currency, total) VALUES (?, ?, ?, ?, ?)")).
+		WithArgs(2, "Any", ts.Format(time.RFC3339), "EUR", 123.45).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Insert receipt items
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
-		WithArgs(1, 1, "Item 1", 11.0, 10.0).
+		WithArgs(1, 1.0, "Item 1", 11.0, 10.0).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
-		WithArgs(1, 2, "Item 2", 22.0, 20.0).
+		WithArgs(1, 2.0, "Item 2", 22.0, 20.0).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
 	created_receipt, err := CreateReceipt(db, &receipt)
@@ -272,9 +272,9 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 
 	//receipt := Receipt{UserID: 1, Supermarket: "Any", Date: ts, Total: 100.0}
 
-	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "total"})
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"})
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -283,20 +283,20 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 	items := []ReceiptItem{{Name: "Item 1", Quantity: 1, Price: 10, UnitPrice: 11},
 		{Name: "Item 2", Quantity: 2, Price: 20, UnitPrice: 22}}
 
-	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Total: 123.45, Items: items}
+	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Total: 123.45, Currency: "EUR", Items: items}
 
 	// Insert receipt
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, total) VALUES (?, ?, ?, ?)")).
-		WithArgs(2, "Any", ts.Format(time.RFC3339), 123.45).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, currency, total) VALUES (?, ?, ?, ?, ?)")).
+		WithArgs(2, "Any", ts.Format(time.RFC3339), "EUR", 123.45).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Insert receipt items
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
-		WithArgs(1, 1, "Item 1", 11.0, 10.0).
+		WithArgs(1, 1.0, "Item 1", 11.0, 10.0).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
-		WithArgs(1, 2, "Item 2", 22.0, 20.0).
+		WithArgs(1, 2.0, "Item 2", 22.0, 20.0).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
 	created_receipt, err := CreateReceipt(db, &receipt)
