@@ -171,7 +171,7 @@ func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 	}
 }
 
-func TestCreateDuplicatedReceipt(t *testing.T) {
+func TestCreateReceipt(t *testing.T) {
 	db, mock, err := sqlmock.New()
 
 	if err != nil {
@@ -186,6 +186,40 @@ func TestCreateDuplicatedReceipt(t *testing.T) {
 
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
 		AddRow(1, 1, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
+		WillReturnRows(receipt_rows)
+
+	mock.ExpectBegin()
+	mock.ExpectCommit()
+
+	receipt := Receipt{UserID: 1, Supermarket: "Any", Date: ts, Total: 123.45}
+	created_receipt, err := CreateReceipt(db, &receipt)
+
+	if created_receipt != nil {
+		t.Fatalf("Created duplicated receipt")
+	}
+
+	if err.Error() != "Receipt already exists" {
+		t.Fatalf("Unexpected error creating receipt: %s", err)
+	}
+
+}
+
+func TestCreateReceiptWithNullCurrency(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, 1, "Any", ts, nil, 123.45)
 
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).

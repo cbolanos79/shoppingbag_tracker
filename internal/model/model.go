@@ -116,11 +116,14 @@ func FindReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date tim
 	row := db.QueryRow("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
 
 	receipt := Receipt{}
-	err := row.Scan(&receipt.ID, &receipt.UserID, &receipt.Supermarket, &receipt.Date, &receipt.Currency, &receipt.Total)
+	var currency sql.NullString
+	err := row.Scan(&receipt.ID, &receipt.UserID, &receipt.Supermarket, &receipt.Date, &currency, &receipt.Total)
+
 	if err != nil {
 		return nil, err
 	}
 
+	receipt.Currency = currency.String
 	return &receipt, nil
 }
 
