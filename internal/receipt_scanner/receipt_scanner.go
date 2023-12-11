@@ -31,6 +31,16 @@ func SearchExpense(item []*textract.ExpenseField, s string) string {
 	return ""
 }
 
+// Auxiliar function to search string into an array of textract.ExpenseField
+func SearchCurrency(item []*textract.ExpenseField) string {
+        for _, item := range item {
+                if *item.Type.Text == "TOTAL" {
+                        return *item.Currency.Code
+                }
+        }
+        return ""
+}
+
 // Analyze ticket on Textract using OCR and AI, and get in response structured information about receipt
 func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Receipt, error) {
 
@@ -78,8 +88,10 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	if err != nil {
 		total = -1
 	}
-
 	receipt.Total = total
+
+  // Get currency
+  receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
 
 	// Iterate over each concept from receipt
 	for _, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
