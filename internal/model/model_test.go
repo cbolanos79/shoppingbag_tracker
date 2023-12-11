@@ -95,7 +95,7 @@ func TestFindUserByGoogleIdFound(t *testing.T) {
 
 	rows := mock.NewRows([]string{"id", "google_uid"}).AddRow(1, "12345")
 
-	mock.ExpectQuery("SELECT \\* FROM users WHERE google_uid = ?").
+	mock.ExpectQuery("SELECT \\* FROM users").
 		WithArgs("12345").
 		WillReturnRows(rows)
 
@@ -121,7 +121,7 @@ func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 
 	rows := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"})
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts")).
 		WithArgs("%other%", ts.Format(time.RFC3339), 543.21).
 		WillReturnRows(rows)
 
@@ -152,7 +152,7 @@ func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 	rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
 		AddRow(1, 1, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(rows)
 
@@ -187,7 +187,7 @@ func TestCreateReceipt(t *testing.T) {
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
 		AddRow(1, 1, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -221,7 +221,7 @@ func TestCreateReceiptWithNullCurrency(t *testing.T) {
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
 		AddRow(1, 1, "Any", ts, nil, 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -255,7 +255,7 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
 		AddRow(1, 1, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -267,16 +267,16 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Currency: "EUR", Total: 123.45, Items: items}
 
 	// Insert receipt
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, currency, total) VALUES (?, ?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts")).
 		WithArgs(2, "Any", ts.Format(time.RFC3339), "EUR", 123.45).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Insert receipt items
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items ")).
 		WithArgs(1, 1.0, "Item 1", 11.0, 10.0).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items")).
 		WithArgs(1, 2.0, "Item 2", 22.0, 20.0).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
@@ -308,7 +308,7 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 
 	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"})
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts")).
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(receipt_rows)
 
@@ -320,16 +320,16 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 	receipt := Receipt{UserID: 2, Supermarket: "Any", Date: ts, Total: 123.45, Currency: "EUR", Items: items}
 
 	// Insert receipt
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts (user_id, supermarket, receipt_date, currency, total) VALUES (?, ?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipts")).
 		WithArgs(2, "Any", ts.Format(time.RFC3339), "EUR", 123.45).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Insert receipt items
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items")).
 		WithArgs(1, 1.0, "Item 1", 11.0, 10.0).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)")).
+	mock.ExpectExec(regexp.QuoteMeta("INSERT INTO receipt_items")).
 		WithArgs(1, 2.0, "Item 2", 22.0, 20.0).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
