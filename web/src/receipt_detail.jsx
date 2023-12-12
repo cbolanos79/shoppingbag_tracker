@@ -18,7 +18,7 @@ export default class ReceiptDetail extends Component {
                     <dt className="col-md-2 text-start">Date</dt>
                     <dd className="col-md-10 text-start">{this.props.data.Date}</dd>
                     <dt className="col-md-2 text-start">Total</dt>
-                    <dd className="col-md-10 text-start">{this.props.data.Total}</dd>
+                    <dd className="col-md-10 text-start">{this.props.data.Total}&nbsp;{this.props.data.Currency}</dd>
                 </dl>
                 <hr />
                 <Table>
@@ -26,8 +26,8 @@ export default class ReceiptDetail extends Component {
                         <tr>
                             <th>Quantity</th>
                             <th>Name</th>
-                            <th>Unit price</th>
-                            <th>Price</th>
+                            <th>Unit price ({this.props.data.Currency})</th>
+                            <th>Price ({this.props.data.Currency})</th>
                         </tr>
                     </thead>
                     <tbody>
