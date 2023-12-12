@@ -95,11 +95,8 @@ func LoginGoogle(c echo.Context) error {
 	return c.JSON(http.StatusOK, &userProfile)
 }
 
-// Create a receipt from given file using a valid user, or return error with status 422 if can not create
-// Receipt is analyzed by Textract, and then store results into database
-func CreateReceipt(c echo.Context) error {
-	// By default, token is stored in user key
-
+// Analyze a receipt image and returns information in json format or error if could not be analyzed
+func AnalyzeReceipt(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Println("CreateReceipt - Error processing form file\n", err)
@@ -111,13 +108,6 @@ func CreateReceipt(c echo.Context) error {
 		log.Println("CreateReceipt - Error creating new aws session\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to aws", []string{err.Error()}})
 	}
-
-	db, err := model.NewDB()
-	if err != nil {
-		log.Println("CreateReceipt - Error connecting to database\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
-	}
-	defer db.Close()
 
 	f, err := file.Open()
 	if err != nil {
@@ -131,10 +121,45 @@ func CreateReceipt(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error analyzing file", []string{err.Error()}})
 	}
 
+	return c.JSON(http.StatusOK, echo.Map{"receipt": receipt})
+}
+
+// Create a receipt from given file using a valid user, or return error with status 422 if can not create
+func CreateReceipt(c echo.Context) error {
+
 	user := c.Get("user_id").(*model.User)
+	var receipt model.Receipt
+
+	err := c.Bind(&receipt)
+	if err != nil {
+		log.Printf("CreateReceipt - Error parsing JSON: %v\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error parsing JSON", []string{err.Error()}})
+	}
+
+	/*
+		var receipt2 model.Receipt
+
+			b, err := io.ReadAll(c.Request().Body)
+			log.Println(string(b))
+		err := json.NewDecoder(c.Request().Body).Decode(&receipt2)
+
+		if err != nil {
+			log.Printf("CreateReceipt - Error parsing JSON: %v", err)
+		}
+
+		log.Println(receipt2)
+	*/
+
 	receipt.UserID = user.ID
 
-	_, err = model.CreateReceipt(db, receipt)
+	db, err := model.NewDB()
+	if err != nil {
+		log.Println("CreateReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
+	}
+	defer db.Close()
+
+	_, err = model.CreateReceipt(db, &receipt)
 	if err != nil {
 		log.Println("CreateReceipt - Error creating receipt\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating receipt", []string{err.Error()}})
