@@ -123,7 +123,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
 
 	// Iterate over each concept from receipt
-	for _, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
+	for index, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
 		name := SearchExpense(line_item.LineItemExpenseFields, "ITEM")
 
 		squantity := SearchExpense(line_item.LineItemExpenseFields, "QUANTITY")
@@ -133,18 +133,29 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		if len(squantity) > 0 {
 			quantity, err = strconv.ParseFloat(strings.Replace(squantity, ",", ".", -1), 64)
 			if err != nil {
-				quantity = -1
+				return nil, err
 			}
 		}
 
-		price, err := strconv.ParseFloat(strings.Replace(SearchExpense(line_item.LineItemExpenseFields, "PRICE"), ",", ".", -1), 64)
-		if err != nil {
-			price = -1
+		sprice := SearchExpense(line_item.LineItemExpenseFields, "PRICE")
+		var price float64
+		if len(sprice) > 0 {
+			price, err = strconv.ParseFloat(strings.Replace(sprice, ",", ".", -1), 64)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("empty price for item #%d", index)
 		}
 
-		unit_price, err := strconv.ParseFloat(strings.Replace(SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE"), ",", ".", -1), 64)
-		if err != nil {
-			unit_price = -1
+		sunit_price := SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE")
+		var unit_price float64
+		if len(sunit_price) > 0 {
+			unit_price, err = strconv.ParseFloat(strings.Replace(sunit_price, ",", ".", -1), 64)
+
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Add each item to receipt
