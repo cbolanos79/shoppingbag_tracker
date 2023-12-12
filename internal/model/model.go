@@ -11,21 +11,21 @@ import (
 )
 
 type ReceiptItem struct {
-	ID        int64   `db:"id"`
-	ReceiptID int64   `db:"receipt_id"`
-	Name      string  `db:"name"`
-	Quantity  float64 `db:"quantity"`
-	Price     float64 `db:"price"`
-	UnitPrice float64 `db:"unit_price"`
+	ID        int64   `db:"id" json:"id"`
+	ReceiptID int64   `db:"receipt_id" json:"receipt_id"`
+	Name      string  `db:"name" json:"name"`
+	Quantity  float64 `db:"quantity" json:"quantity"`
+	Price     float64 `db:"price" json:"price"`
+	UnitPrice float64 `db:"unit_price" json:"unit_price"`
 }
 
 type Receipt struct {
-	ID          int64     `db:"id"`
-	UserID      int64     `db:"user_id"`
-	Supermarket string    `db:"supermarket"`
-	Date        time.Time `db:"receipt_date"`
-	Total       float64   `db:"total"`
-	Currency    string    `db:"currency"`
+	ID          int64     `db:"id" json:"id"`
+	UserID      int64     `db:"user_id" json:"user_id"`
+	Supermarket string    `db:"supermarket" json:"supermarket"`
+	Date        time.Time `db:"receipt_date" json:"date"`
+	Total       float64   `db:"total" json:"total"`
+	Currency    string    `db:"currency" json:"currency"`
 	Items       []ReceiptItem
 }
 
