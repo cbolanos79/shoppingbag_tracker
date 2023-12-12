@@ -36,7 +36,12 @@ func SearchExpense(item []*textract.ExpenseField, s string) string {
 func SearchCurrency(item []*textract.ExpenseField) string {
 	for _, item := range item {
 		if *item.Type.Text == "TOTAL" {
-			return *item.Currency.Code
+			currency := item.Currency
+			if currency == nil {
+				return ""
+			} else {
+				return *currency.Code
+			}
 		}
 	}
 	return ""
