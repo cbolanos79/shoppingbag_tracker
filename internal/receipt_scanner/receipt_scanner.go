@@ -1,7 +1,9 @@
 package receipt_scanner
 
 import (
+	"fmt"
 	mime "mime/multipart"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -33,12 +35,17 @@ func SearchExpense(item []*textract.ExpenseField, s string) string {
 
 // Auxiliar function to search string into an array of textract.ExpenseField
 func SearchCurrency(item []*textract.ExpenseField) string {
-        for _, item := range item {
-                if *item.Type.Text == "TOTAL" {
-                        return *item.Currency.Code
-                }
-        }
-        return ""
+	for _, item := range item {
+		if *item.Type.Text == "TOTAL" {
+			currency := item.Currency
+			if currency == nil {
+				return ""
+			} else {
+				return *currency.Code
+			}
+		}
+	}
+	return ""
 }
 
 // Analyze ticket on Textract using OCR and AI, and get in response structured information about receipt
@@ -73,49 +80,82 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	receipt.Supermarket = sres[0]
 
 	receipt_date := strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "INVOICE_RECEIPT_DATE"), ",", ".", -1)
-	receipt_date = strings.Replace(receipt_date, "-", "/", -1)
+	var date time.Time
 
-	date, err := time.Parse("02/01/2006", receipt_date)
+	// Sometimes, a receipt can have date with format dd.mm.yy due bad quality image or any other problems, which can be a problem to parse
+	// Therefore, check if date has this format and parse with the right layout
+	pattern := regexp.MustCompile(`^\d{1,2}\.\d{1,2}\.\d{1,2}$`)
 
-	if err != nil {
-		return nil, err
+	if pattern.FindIndex([]byte(receipt_date)) == nil {
+		receipt_date = strings.Replace(receipt_date, "-", "/", -1)
+
+		date, err = time.Parse("02/01/2006", receipt_date)
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		date, err = time.Parse("02.01.06", receipt_date)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	receipt.Date = date
 
 	// Get total amount from receipt
-	total, err := strconv.ParseFloat(strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL"), ",", ".", -1), 64)
-	if err != nil {
-		total = -1
-	}
-	receipt.Total = total
+	stotal := SearchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL")
+	amount_exp := regexp.MustCompile(`\d+(\,|\.)\d+`)
 
-  // Get currency
-  receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
+	total := amount_exp.Find([]byte(stotal))
+	if total == nil {
+		return nil, fmt.Errorf("error parsing total amount: %s", stotal)
+	}
+
+	receipt.Total, err = strconv.ParseFloat(strings.Replace(string(total), ",", ".", -1), 64)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Get currency
+	receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
 
 	// Iterate over each concept from receipt
-	for _, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
+	for index, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
 		name := SearchExpense(line_item.LineItemExpenseFields, "ITEM")
 
 		squantity := SearchExpense(line_item.LineItemExpenseFields, "QUANTITY")
 		quantity := 1.0
 
-    // Some receipts have not quantity field, therefore set 1 by default
+		// Some receipts have not quantity field, therefore set 1 by default
 		if len(squantity) > 0 {
 			quantity, err = strconv.ParseFloat(strings.Replace(squantity, ",", ".", -1), 64)
 			if err != nil {
-				quantity = -1
+				return nil, err
 			}
 		}
 
-		price, err := strconv.ParseFloat(strings.Replace(SearchExpense(line_item.LineItemExpenseFields, "PRICE"), ",", ".", -1), 64)
-		if err != nil {
-			price = -1
+		sprice := SearchExpense(line_item.LineItemExpenseFields, "PRICE")
+		var price float64
+		if len(sprice) > 0 {
+			price, err = strconv.ParseFloat(strings.Replace(sprice, ",", ".", -1), 64)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("empty price for item #%d", index)
 		}
 
-		unit_price, err := strconv.ParseFloat(strings.Replace(SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE"), ",", ".", -1), 64)
-		if err != nil {
-			unit_price = -1
+		sunit_price := SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE")
+		var unit_price float64
+		if len(sunit_price) > 0 {
+			unit_price, err = strconv.ParseFloat(strings.Replace(sunit_price, ",", ".", -1), 64)
+
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Add each item to receipt
