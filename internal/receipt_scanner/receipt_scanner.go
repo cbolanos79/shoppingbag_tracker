@@ -2,6 +2,7 @@ package receipt_scanner
 
 import (
 	mime "mime/multipart"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -73,12 +74,26 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	receipt.Supermarket = sres[0]
 
 	receipt_date := strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "INVOICE_RECEIPT_DATE"), ",", ".", -1)
-	receipt_date = strings.Replace(receipt_date, "-", "/", -1)
+	var date time.Time
 
-	date, err := time.Parse("02/01/2006", receipt_date)
+	// Sometimes, a receipt can have date with format dd.mm.yy due bad quality image or any other problems, which can be a problem to parse
+	// Therefore, check if date has this format and parse with the right layout
+	pattern := regexp.MustCompile(`^\d{1,2}\.\d{1,2}\.\d{1,2}$`)
 
-	if err != nil {
-		return nil, err
+	if pattern.FindIndex([]byte(receipt_date)) == nil {
+		receipt_date = strings.Replace(receipt_date, "-", "/", -1)
+
+		date, err = time.Parse("02/01/2006", receipt_date)
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		date, err = time.Parse("02.01.06", receipt_date)
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	receipt.Date = date
