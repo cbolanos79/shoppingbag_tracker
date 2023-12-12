@@ -133,7 +133,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		if len(squantity) > 0 {
 			quantity, err = strconv.ParseFloat(strings.Replace(squantity, ",", ".", -1), 64)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error parsing quantity: %v", err)
 			}
 		}
 
@@ -142,7 +142,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		if len(sprice) > 0 {
 			price, err = strconv.ParseFloat(strings.Replace(sprice, ",", ".", -1), 64)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error parsing price: %v", err)
 			}
 		} else {
 			return nil, fmt.Errorf("empty price for item #%d", index)
@@ -151,10 +151,15 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		sunit_price := SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE")
 		var unit_price float64
 		if len(sunit_price) > 0 {
-			unit_price, err = strconv.ParseFloat(strings.Replace(sunit_price, ",", ".", -1), 64)
+			// Sometimes, unit price can have alphanumeric information
+			sunit_price := amount_exp.Find([]byte(sunit_price))
+			if sunit_price == nil {
+				return nil, fmt.Errorf("error parsing unit price: invalid format %s", sunit_price)
+			}
+			unit_price, err = strconv.ParseFloat(strings.Replace(string(sunit_price), ",", ".", -1), 64)
 
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("error parsing unit price: %v", err)
 			}
 		}
 
