@@ -34,12 +34,12 @@ func SearchExpense(item []*textract.ExpenseField, s string) string {
 
 // Auxiliar function to search string into an array of textract.ExpenseField
 func SearchCurrency(item []*textract.ExpenseField) string {
-        for _, item := range item {
-                if *item.Type.Text == "TOTAL" {
-                        return *item.Currency.Code
-                }
-        }
-        return ""
+	for _, item := range item {
+		if *item.Type.Text == "TOTAL" {
+			return *item.Currency.Code
+		}
+	}
+	return ""
 }
 
 // Analyze ticket on Textract using OCR and AI, and get in response structured information about receipt
@@ -105,8 +105,8 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	}
 	receipt.Total = total
 
-  // Get currency
-  receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
+	// Get currency
+	receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
 
 	// Iterate over each concept from receipt
 	for _, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
@@ -115,7 +115,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		squantity := SearchExpense(line_item.LineItemExpenseFields, "QUANTITY")
 		quantity := 1.0
 
-    // Some receipts have not quantity field, therefore set 1 by default
+		// Some receipts have not quantity field, therefore set 1 by default
 		if len(squantity) > 0 {
 			quantity, err = strconv.ParseFloat(strings.Replace(squantity, ",", ".", -1), 64)
 			if err != nil {
