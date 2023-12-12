@@ -1,6 +1,7 @@
 package receipt_scanner
 
 import (
+	"fmt"
 	mime "mime/multipart"
 	"regexp"
 	"strconv"
@@ -104,11 +105,19 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	receipt.Date = date
 
 	// Get total amount from receipt
-	total, err := strconv.ParseFloat(strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL"), ",", ".", -1), 64)
-	if err != nil {
-		total = -1
+	stotal := SearchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL")
+	amount_exp := regexp.MustCompile(`\d+(\,|\.)\d+`)
+
+	total := amount_exp.Find([]byte(stotal))
+	if total == nil {
+		return nil, fmt.Errorf("error parsing total amount: %s", stotal)
 	}
-	receipt.Total = total
+
+	receipt.Total, err = strconv.ParseFloat(strings.Replace(string(total), ",", ".", -1), 64)
+
+	if err != nil {
+		return nil, err
+	}
 
 	// Get currency
 	receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
