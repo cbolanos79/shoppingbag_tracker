@@ -9,7 +9,6 @@ import (
 	"github.com/cbolanos79/shoppingbag_tracker/internal/model"
 
 	"github.com/joho/godotenv"
-	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -30,7 +29,7 @@ func main() {
 		log.Fatal("Empty value for DB_NAME")
 	}
 
-	db, err := model.NewDB()
+	s, err := model.NewStorage()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,13 +39,13 @@ func main() {
 		log.Fatal("Missing jwt signature")
 	}
 
-	model.InitDB(db)
+	s.InitDB()
 
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.CORS())
 
-	e.POST("/receipt", api.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), api.UserMiddleware)
-	e.POST("/login/google", api.LoginGoogle)
+	api.RegisterRoutes(s, e, jwt_signature)
+
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", os.Getenv("PORT"))))
 }
