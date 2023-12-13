@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+
 	"strconv"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/cbolanos79/shoppingbag_tracker/internal/receipt_scanner"
 
 	"github.com/golang-jwt/jwt/v5"
+	echojwt "github.com/labstack/echo-jwt/v4"
 
 	"github.com/labstack/echo/v4"
 	"google.golang.org/api/idtoken"
@@ -33,10 +35,25 @@ type ErrorMessage struct {
 	Errors  []string `json:"errors"`
 }
 
+type Api struct {
+	s *model.Storage
+}
+
+func RegisterRoutes(s *model.Storage, e *echo.Echo, jwt_signature string) {
+
+	a := Api{
+		s: s,
+	}
+
+	e.POST("/analyze", a.AnalyzeReceipt, echojwt.JWT([]byte(jwt_signature)), a.UserMiddleware)
+	e.POST("/receipt", a.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), a.UserMiddleware)
+	e.POST("/login/google", a.LoginGoogle)
+}
+
 // Receive credential for Google login and validate it agains Google API
 // If credential is valid, extract name and profile picture url
 // Else, returns an error
-func LoginGoogle(c echo.Context) error {
+func (a *Api) LoginGoogle(c echo.Context) error {
 	login := Login{}
 	c.Bind(&login)
 
@@ -58,13 +75,7 @@ func LoginGoogle(c echo.Context) error {
 	}
 
 	// Check if user exists
-	db, err := model.NewDB()
-	if err != nil {
-		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error accessing database", []string{err.Error()}})
-	}
-	defer db.Close()
-
-	user, err := model.FindUserByGoogleUid(db, payload.Subject)
+	user, err := a.s.FindUserByGoogleUid(payload.Subject)
 	if err != nil {
 		log.Printf("GoogleLogin - User %s not found, error %v\n", payload.Subject, err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"User not found", []string{err.Error()}})
@@ -96,7 +107,7 @@ func LoginGoogle(c echo.Context) error {
 }
 
 // Analyze a receipt image and returns information in json format or error if could not be analyzed
-func AnalyzeReceipt(c echo.Context) error {
+func (a *Api) AnalyzeReceipt(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Println("CreateReceipt - Error processing form file\n", err)
@@ -125,7 +136,7 @@ func AnalyzeReceipt(c echo.Context) error {
 }
 
 // Create a receipt from given file using a valid user, or return error with status 422 if can not create
-func CreateReceipt(c echo.Context) error {
+func (a *Api) CreateReceipt(c echo.Context) error {
 
 	user := c.Get("user_id").(*model.User)
 	var receipt model.Receipt
@@ -136,30 +147,9 @@ func CreateReceipt(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error parsing JSON", []string{err.Error()}})
 	}
 
-	/*
-		var receipt2 model.Receipt
-
-			b, err := io.ReadAll(c.Request().Body)
-			log.Println(string(b))
-		err := json.NewDecoder(c.Request().Body).Decode(&receipt2)
-
-		if err != nil {
-			log.Printf("CreateReceipt - Error parsing JSON: %v", err)
-		}
-
-		log.Println(receipt2)
-	*/
-
 	receipt.UserID = user.ID
 
-	db, err := model.NewDB()
-	if err != nil {
-		log.Println("CreateReceipt - Error connecting to database\n", err)
-		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
-	}
-	defer db.Close()
-
-	_, err = model.CreateReceipt(db, &receipt)
+	_, err = a.s.CreateReceipt(&receipt)
 	if err != nil {
 		log.Println("CreateReceipt - Error creating receipt\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating receipt", []string{err.Error()}})
@@ -168,7 +158,7 @@ func CreateReceipt(c echo.Context) error {
 }
 
 // Check if user from jwt exists or stop if not
-func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func (a *Api) UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 
@@ -178,20 +168,13 @@ func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.ErrUnauthorized
 		}
 
-		db, err := model.NewDB()
-		if err != nil {
-			log.Println("CreateReceipt - Error decoding token\n", err)
-			return echo.ErrUnauthorized
-		}
-		defer db.Close()
-
 		user_idd, err := strconv.Atoi(user_id)
 		if err != nil {
 			log.Println("CreateReceipt - Error decoding token\n", err)
 			return echo.ErrUnauthorized
 		}
 
-		user, err := model.FindUserById(db, user_idd)
+		user, err := a.s.FindUserById(user_idd)
 		if user == nil || err != nil {
 			log.Println("CreateReceipt - User not found\n", err)
 			return echo.ErrUnauthorized
