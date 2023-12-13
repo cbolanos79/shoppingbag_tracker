@@ -13,18 +13,26 @@ import (
 	"github.com/cbolanos79/shoppingbag_tracker/internal/model"
 )
 
-func NewAwsSession() (*session.Session, error) {
+type IScanner interface {
+	Scan() (*model.Receipt, error)
+}
+
+type Scanner struct {
+	s *session.Session
+}
+
+func NewScanner() (*Scanner, error) {
 	aws_session, err := session.NewSession()
 
 	if err != nil {
 		return nil, err
 	}
 
-	return aws_session, nil
+	return &Scanner{aws_session}, nil
 }
 
 // Auxiliar function to search string into an array of textract.ExpenseField
-func SearchExpense(item []*textract.ExpenseField, s string) string {
+func (sc *Scanner) searchExpense(item []*textract.ExpenseField, s string) string {
 	for _, item := range item {
 		if *item.Type.Text == s {
 			return *item.ValueDetection.Text
@@ -34,7 +42,7 @@ func SearchExpense(item []*textract.ExpenseField, s string) string {
 }
 
 // Auxiliar function to search string into an array of textract.ExpenseField
-func SearchCurrency(item []*textract.ExpenseField) string {
+func (sc *Scanner) searchCurrency(item []*textract.ExpenseField) string {
 	for _, item := range item {
 		if *item.Type.Text == "TOTAL" {
 			currency := item.Currency
@@ -49,10 +57,10 @@ func SearchCurrency(item []*textract.ExpenseField) string {
 }
 
 // Analyze ticket on Textract using OCR and AI, and get in response structured information about receipt
-func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Receipt, error) {
+func (sc *Scanner) Scan(file mime.File, size int64) (*model.Receipt, error) {
 
 	// Create object to e
-	svc := textract.New(aws_session)
+	svc := textract.New(sc.s)
 
 	// Allocate enough space to read file
 	b := make([]byte, size)
@@ -79,7 +87,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	receipt := &model.Receipt{}
 	receipt.Supermarket = sres[0]
 
-	receipt_date := strings.Replace(SearchExpense(res.ExpenseDocuments[0].SummaryFields, "INVOICE_RECEIPT_DATE"), ",", ".", -1)
+	receipt_date := strings.Replace(sc.searchExpense(res.ExpenseDocuments[0].SummaryFields, "INVOICE_RECEIPT_DATE"), ",", ".", -1)
 	var date time.Time
 
 	// Sometimes, a receipt can have date with format dd.mm.yy due bad quality image or any other problems, which can be a problem to parse
@@ -105,7 +113,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	receipt.Date = date
 
 	// Get total amount from receipt
-	stotal := SearchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL")
+	stotal := sc.searchExpense(res.ExpenseDocuments[0].SummaryFields, "TOTAL")
 	amount_exp := regexp.MustCompile(`\d+(\,|\.)\d+`)
 
 	total := amount_exp.Find([]byte(stotal))
@@ -120,13 +128,13 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 	}
 
 	// Get currency
-	receipt.Currency = SearchCurrency(res.ExpenseDocuments[0].SummaryFields)
+	receipt.Currency = sc.searchCurrency(res.ExpenseDocuments[0].SummaryFields)
 
 	// Iterate over each concept from receipt
 	for index, line_item := range res.ExpenseDocuments[0].LineItemGroups[0].LineItems {
-		name := SearchExpense(line_item.LineItemExpenseFields, "ITEM")
+		name := sc.searchExpense(line_item.LineItemExpenseFields, "ITEM")
 
-		squantity := SearchExpense(line_item.LineItemExpenseFields, "QUANTITY")
+		squantity := sc.searchExpense(line_item.LineItemExpenseFields, "QUANTITY")
 		quantity := 1.0
 
 		// Some receipts have not quantity field, therefore set 1 by default
@@ -137,7 +145,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 			}
 		}
 
-		sprice := SearchExpense(line_item.LineItemExpenseFields, "PRICE")
+		sprice := sc.searchExpense(line_item.LineItemExpenseFields, "PRICE")
 		var price float64
 		if len(sprice) > 0 {
 			price, err = strconv.ParseFloat(strings.Replace(sprice, ",", ".", -1), 64)
@@ -148,7 +156,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 			return nil, fmt.Errorf("empty price for item #%d", index)
 		}
 
-		sunit_price := SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE")
+		sunit_price := sc.searchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE")
 		var unit_price float64
 		if len(sunit_price) > 0 {
 			// Sometimes, unit price can have alphanumeric information
