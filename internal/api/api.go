@@ -114,10 +114,10 @@ func (h *Handler) AnalyzeReceipt(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error opening file", []string{err.Error()}})
 	}
 
-	session, err := receipt_scanner.NewAwsSession()
+	scanner, err := receipt_scanner.NewScanner()
 	if err != nil {
-		log.Printf("CreateReceipt - Error creating new aws session: %v", err)
-		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to aws", []string{err.Error()}})
+		log.Printf("CreateReceipt - Error initializing scanner: %v", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error initializing scanner", []string{err.Error()}})
 	}
 
 	f, err := file.Open()
@@ -126,7 +126,7 @@ func (h *Handler) AnalyzeReceipt(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error opening file", []string{err.Error()}})
 	}
 
-	receipt, err := receipt_scanner.Scan(session, f, file.Size)
+	receipt, err := scanner.Scan(f, file.Size)
 	if err != nil {
 		log.Printf("CreateReceipt - Error opening file: %v", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error analyzing file", []string{err.Error()}})
