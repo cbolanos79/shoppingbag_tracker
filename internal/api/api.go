@@ -41,13 +41,13 @@ type Handler struct {
 
 func RegisterRoutes(s model.IStorage, e *echo.Echo, jwt_signature string) {
 
-	a := Api{
+	h := Handler{
 		s: s,
 	}
 
-	e.POST("/analyze", a.AnalyzeReceipt, echojwt.JWT([]byte(jwt_signature)), a.UserMiddleware)
-	e.POST("/receipt", a.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), a.UserMiddleware)
-	e.POST("/login/google", a.LoginGoogle)
+	e.POST("/analyze", h.AnalyzeReceipt, echojwt.JWT([]byte(jwt_signature)), h.userMiddleware)
+	e.POST("/receipt", h.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), h.userMiddleware)
+	e.POST("/login/google", h.LoginGoogle)
 }
 
 // Receive credential for Google login and validate it agains Google API
@@ -158,7 +158,7 @@ func (h *Handler) CreateReceipt(c echo.Context) error {
 }
 
 // Check if user from jwt exists or stop if not
-func (h *Handler) UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func (h *Handler) userMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 
