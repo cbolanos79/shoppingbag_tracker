@@ -34,11 +34,19 @@ type User struct {
 	GoogleUID string `db:"google_uid"`
 }
 
-type Storage struct {
+type IStorage interface {
+	InitDB() error
+	FindUserById(int) (*User, error)
+	FindUserByGoogleUid(string) (*User, error)
+	FindReceiptBySupermarketDateAmount(string, time.Time, float64) (*Receipt, error)
+	CreateReceipt(*Receipt) (*Receipt, error)
+}
+
+type DBStorage struct {
 	db *sql.DB
 }
 
-func NewStorage() (*Storage, error) {
+func NewDBStorage() (*DBStorage, error) {
 	db_name := os.Getenv("DB_NAME")
 	if len(db_name) == 0 {
 		return nil, errors.New("empty value for DB_NAME")
@@ -54,10 +62,10 @@ func NewStorage() (*Storage, error) {
 		return nil, err
 	}
 
-	return &Storage{db: db}, nil
+	return &DBStorage{db: db}, nil
 }
 
-func (s *Storage) InitDB() error {
+func (s *DBStorage) InitDB() error {
 
 	const create = `
 	CREATE TABLE IF NOT EXISTS users (
@@ -91,7 +99,7 @@ func (s *Storage) InitDB() error {
 }
 
 // Find user by given ID and return User instance or error
-func (s *Storage) FindUserById(user_id int) (*User, error) {
+func (s *DBStorage) FindUserById(user_id int) (*User, error) {
 	row := s.db.QueryRow("SELECT * FROM users WHERE id = ?", user_id)
 
 	user := User{}
@@ -103,7 +111,7 @@ func (s *Storage) FindUserById(user_id int) (*User, error) {
 }
 
 // Check if given google id user exists in database
-func (s *Storage) FindUserByGoogleUid(google_uid string) (*User, error) {
+func (s *DBStorage) FindUserByGoogleUid(google_uid string) (*User, error) {
 	row := s.db.QueryRow("SELECT * FROM users WHERE google_uid = ?", google_uid)
 
 	user := User{}
@@ -116,7 +124,7 @@ func (s *Storage) FindUserByGoogleUid(google_uid string) (*User, error) {
 }
 
 // Check if exists a receipt for given supermarket, date and amount (these values should be unique)
-func (s *Storage) FindReceiptBySupermarketDateAmount(supermarket string, date time.Time, total float64) (*Receipt, error) {
+func (s *DBStorage) FindReceiptBySupermarketDateAmount(supermarket string, date time.Time, total float64) (*Receipt, error) {
 	row := s.db.QueryRow("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
 
 	receipt := Receipt{}
@@ -132,7 +140,7 @@ func (s *Storage) FindReceiptBySupermarketDateAmount(supermarket string, date ti
 }
 
 // Create a new receipt in the database and return record ID or error if could not be created
-func (s *Storage) CreateReceipt(receipt *Receipt) (*Receipt, error) {
+func (s *DBStorage) CreateReceipt(receipt *Receipt) (*Receipt, error) {
 	// Check if receipt already exists
 	ereceipt, err := s.FindReceiptBySupermarketDateAmount(receipt.Supermarket, receipt.Date, receipt.Total)
 

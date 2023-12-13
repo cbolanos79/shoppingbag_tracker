@@ -11,7 +11,7 @@ import (
 
 func TestUserFindByIdNotFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -35,7 +35,7 @@ func TestUserFindByIdNotFound(t *testing.T) {
 
 func TestUserFindByIdSuccess(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -66,7 +66,7 @@ func TestUserFindByIdSuccess(t *testing.T) {
 
 func TestFindUserByGoogleIdNotFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -93,7 +93,7 @@ func TestFindUserByGoogleIdNotFound(t *testing.T) {
 
 func TestFindUserByGoogleIdFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -120,7 +120,7 @@ func TestFindUserByGoogleIdFound(t *testing.T) {
 
 func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -152,7 +152,7 @@ func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 
 func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -185,7 +185,7 @@ func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 
 func TestCreateReceipt(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -222,7 +222,7 @@ func TestCreateReceipt(t *testing.T) {
 
 func TestCreateReceiptWithNullCurrency(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -256,7 +256,7 @@ func TestCreateReceiptWithNullCurrency(t *testing.T) {
 
 func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
@@ -309,7 +309,7 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 
 func TestCreateNonDuplicatedReceipt(t *testing.T) {
 	db, mock, err := sqlmock.New()
-	s := Storage{db: db}
+	s := DBStorage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
