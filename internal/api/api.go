@@ -35,7 +35,7 @@ type ErrorMessage struct {
 	Errors  []string `json:"errors"`
 }
 
-type Api struct {
+type Handler struct {
 	s model.IStorage
 }
 
@@ -53,7 +53,7 @@ func RegisterRoutes(s model.IStorage, e *echo.Echo, jwt_signature string) {
 // Receive credential for Google login and validate it agains Google API
 // If credential is valid, extract name and profile picture url
 // Else, returns an error
-func (a *Api) LoginGoogle(c echo.Context) error {
+func (h *Handler) LoginGoogle(c echo.Context) error {
 	login := Login{}
 	c.Bind(&login)
 
@@ -75,7 +75,7 @@ func (a *Api) LoginGoogle(c echo.Context) error {
 	}
 
 	// Check if user exists
-	user, err := a.s.FindUserByGoogleUid(payload.Subject)
+	user, err := h.s.FindUserByGoogleUid(payload.Subject)
 	if err != nil {
 		log.Printf("GoogleLogin - User %s not found, error %v\n", payload.Subject, err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"User not found", []string{err.Error()}})
@@ -107,7 +107,7 @@ func (a *Api) LoginGoogle(c echo.Context) error {
 }
 
 // Analyze a receipt image and returns information in json format or error if could not be analyzed
-func (a *Api) AnalyzeReceipt(c echo.Context) error {
+func (h *Handler) AnalyzeReceipt(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
 		log.Println("CreateReceipt - Error processing form file\n", err)
@@ -136,7 +136,7 @@ func (a *Api) AnalyzeReceipt(c echo.Context) error {
 }
 
 // Create a receipt from given file using a valid user, or return error with status 422 if can not create
-func (a *Api) CreateReceipt(c echo.Context) error {
+func (h *Handler) CreateReceipt(c echo.Context) error {
 
 	user := c.Get("user_id").(*model.User)
 	var receipt model.Receipt
@@ -149,7 +149,7 @@ func (a *Api) CreateReceipt(c echo.Context) error {
 
 	receipt.UserID = user.ID
 
-	_, err = a.s.CreateReceipt(&receipt)
+	_, err = h.s.CreateReceipt(&receipt)
 	if err != nil {
 		log.Println("CreateReceipt - Error creating receipt\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating receipt", []string{err.Error()}})
@@ -158,7 +158,7 @@ func (a *Api) CreateReceipt(c echo.Context) error {
 }
 
 // Check if user from jwt exists or stop if not
-func (a *Api) UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+func (h *Handler) UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		token := c.Get("user").(*jwt.Token)
 
@@ -174,7 +174,7 @@ func (a *Api) UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.ErrUnauthorized
 		}
 
-		user, err := a.s.FindUserById(user_idd)
+		user, err := h.s.FindUserById(user_idd)
 		if user == nil || err != nil {
 			log.Println("CreateReceipt - User not found\n", err)
 			return echo.ErrUnauthorized
