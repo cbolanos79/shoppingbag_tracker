@@ -29,7 +29,7 @@ func main() {
 		log.Fatal("Empty value for DB_NAME")
 	}
 
-	s, err := model.NewStorage()
+	s, err := model.NewDBStorage()
 	if err != nil {
 		log.Fatal(err)
 	}
