@@ -70,14 +70,14 @@ func (h *Handler) LoginGoogle(c echo.Context) error {
 
 	// Return HTTP 422 if there was any error
 	if err != nil {
-		log.Printf("LoginGoogle - Error validating user in google: %v\n", err)
+		log.Printf("LoginGoogle - Error validating user in google: %v", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error validating user", []string{err.Error()}})
 	}
 
 	// Check if user exists
 	user, err := h.s.FindUserByGoogleUid(payload.Subject)
 	if err != nil {
-		log.Printf("GoogleLogin - User %s not found, error %v\n", payload.Subject, err)
+		log.Printf("GoogleLogin - User %s not found, error %v", payload.Subject, err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"User not found", []string{err.Error()}})
 	}
 
@@ -96,7 +96,7 @@ func (h *Handler) LoginGoogle(c echo.Context) error {
 
 	ss, err := token.SignedString([]byte(jwt_signature))
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error signing JWT token for user %s", payload.Subject), err.Error())
+		log.Printf("Error signing JWT token for user %s: %v", payload.Subject, err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating token for user", []string{err.Error()}})
 	}
 
@@ -110,25 +110,25 @@ func (h *Handler) LoginGoogle(c echo.Context) error {
 func (h *Handler) AnalyzeReceipt(c echo.Context) error {
 	file, err := c.FormFile("file")
 	if err != nil {
-		log.Println("CreateReceipt - Error processing form file\n", err)
+		log.Printf("CreateReceipt - Error processing form file: %v", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error opening file", []string{err.Error()}})
 	}
 
 	session, err := receipt_scanner.NewAwsSession()
 	if err != nil {
-		log.Println("CreateReceipt - Error creating new aws session\n", err)
+		log.Printf("CreateReceipt - Error creating new aws session: %v", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to aws", []string{err.Error()}})
 	}
 
 	f, err := file.Open()
 	if err != nil {
-		log.Println("CreateReceipt - Error opening file\n", err)
+		log.Printf("CreateReceipt - Error opening file: %v", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error opening file", []string{err.Error()}})
 	}
 
 	receipt, err := receipt_scanner.Scan(session, f, file.Size)
 	if err != nil {
-		log.Println("CreateReceipt - Error opening file\n", err)
+		log.Printf("CreateReceipt - Error opening file: %v", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error analyzing file", []string{err.Error()}})
 	}
 
@@ -151,7 +151,7 @@ func (h *Handler) CreateReceipt(c echo.Context) error {
 
 	_, err = h.s.CreateReceipt(&receipt)
 	if err != nil {
-		log.Println("CreateReceipt - Error creating receipt\n", err)
+		log.Printf("CreateReceipt - Error creating receipt: %v", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating receipt", []string{err.Error()}})
 	}
 	return c.JSON(http.StatusOK, echo.Map{"message": "Receipt created successfully", "receipt": receipt})
@@ -164,19 +164,19 @@ func (h *Handler) UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		user_id, err := token.Claims.GetSubject()
 		if err != nil {
-			log.Println("CreateReceipt - Error decoding token\n", err)
+			log.Printf("CreateReceipt - Error decoding token: %v", err)
 			return echo.ErrUnauthorized
 		}
 
 		user_idd, err := strconv.Atoi(user_id)
 		if err != nil {
-			log.Println("CreateReceipt - Error decoding token\n", err)
+			log.Printf("CreateReceipt - Error decoding token: %v", err)
 			return echo.ErrUnauthorized
 		}
 
 		user, err := h.s.FindUserById(user_idd)
 		if user == nil || err != nil {
-			log.Println("CreateReceipt - User not found\n", err)
+			log.Printf("CreateReceipt - User not found: %v", err)
 			return echo.ErrUnauthorized
 		}
 
