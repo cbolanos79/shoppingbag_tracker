@@ -34,15 +34,19 @@ type User struct {
 	GoogleUID string `db:"google_uid"`
 }
 
-func NewDB() (*sql.DB, error) {
+type Storage struct {
+	db *sql.DB
+}
+
+func NewStorage() (*Storage, error) {
 	db_name := os.Getenv("DB_NAME")
 	if len(db_name) == 0 {
-		return nil, errors.New("Empty value for DB_NAME")
+		return nil, errors.New("empty value for DB_NAME")
 	}
 
 	db_adapter := os.Getenv("DB_ADAPTER")
 	if len(db_adapter) == 0 {
-		return nil, errors.New("Empty value for DB_NAME")
+		return nil, errors.New("empty value for DB_NAME")
 	}
 
 	db, err := sql.Open("sqlite3", db_name)
@@ -50,10 +54,10 @@ func NewDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	return db, nil
+	return &Storage{db: db}, nil
 }
 
-func InitDB(db *sql.DB) error {
+func (s *Storage) InitDB() error {
 
 	const create = `
 	CREATE TABLE IF NOT EXISTS users (
@@ -79,7 +83,7 @@ func InitDB(db *sql.DB) error {
 		unit_price decimal(6, 2)
 	);`
 
-	if _, err := db.Exec(create); err != nil {
+	if _, err := s.db.Exec(create); err != nil {
 		return err
 	}
 
@@ -87,8 +91,8 @@ func InitDB(db *sql.DB) error {
 }
 
 // Find user by given ID and return User instance or error
-func FindUserById(db *sql.DB, user_id int) (*User, error) {
-	row := db.QueryRow("SELECT * FROM users WHERE id = ?", user_id)
+func (s *Storage) FindUserById(user_id int) (*User, error) {
+	row := s.db.QueryRow("SELECT * FROM users WHERE id = ?", user_id)
 
 	user := User{}
 	if err := row.Scan(&user.ID, &user.GoogleUID); err != nil {
@@ -99,8 +103,8 @@ func FindUserById(db *sql.DB, user_id int) (*User, error) {
 }
 
 // Check if given google id user exists in database
-func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
-	row := db.QueryRow("SELECT * FROM users WHERE google_uid = ?", google_uid)
+func (s *Storage) FindUserByGoogleUid(google_uid string) (*User, error) {
+	row := s.db.QueryRow("SELECT * FROM users WHERE google_uid = ?", google_uid)
 
 	user := User{}
 
@@ -112,8 +116,8 @@ func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 }
 
 // Check if exists a receipt for given supermarket, date and amount (these values should be unique)
-func FindReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date time.Time, total float64) (*Receipt, error) {
-	row := db.QueryRow("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
+func (s *Storage) FindReceiptBySupermarketDateAmount(supermarket string, date time.Time, total float64) (*Receipt, error) {
+	row := s.db.QueryRow("SELECT id, user_id, supermarket, receipt_date, currency, total FROM receipts WHERE supermarket LIKE ? AND DATE(receipt_date) = DATE(?) AND total = ?", fmt.Sprintf("%%%s%%", supermarket), date.Format(time.RFC3339), total)
 
 	receipt := Receipt{}
 	var currency sql.NullString
@@ -128,9 +132,9 @@ func FindReceiptBySupermarketDateAmount(db *sql.DB, supermarket string, date tim
 }
 
 // Create a new receipt in the database and return record ID or error if could not be created
-func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
+func (s *Storage) CreateReceipt(receipt *Receipt) (*Receipt, error) {
 	// Check if receipt already exists
-	ereceipt, err := FindReceiptBySupermarketDateAmount(db, receipt.Supermarket, receipt.Date, receipt.Total)
+	ereceipt, err := s.FindReceiptBySupermarketDateAmount(receipt.Supermarket, receipt.Date, receipt.Total)
 
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
@@ -140,7 +144,7 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 		return nil, errors.New("Receipt already exists")
 	}
 
-	tx, err := db.Begin()
+	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +152,7 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 	defer tx.Rollback()
 
 	// Create receipt
-	res, err := db.Exec("INSERT INTO receipts (user_id, supermarket, receipt_date, currency, total) VALUES (?, ?, ?, ?, ?)", receipt.UserID, receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Currency, receipt.Total)
+	res, err := s.db.Exec("INSERT INTO receipts (user_id, supermarket, receipt_date, currency, total) VALUES (?, ?, ?, ?, ?)", receipt.UserID, receipt.Supermarket, receipt.Date.Format(time.RFC3339), receipt.Currency, receipt.Total)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +166,7 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 	// Create receipt items
 	for index, item := range receipt.Items {
 		// Create receipt item
-		res, err := db.Exec("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)",
+		res, err := s.db.Exec("INSERT INTO receipt_items (receipt_id, quantity, name, unit_price, price) VALUES (?, ?, ?, ?, ?)",
 			id, item.Quantity, item.Name, item.UnitPrice, item.Price)
 
 		if err != nil {

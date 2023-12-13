@@ -11,6 +11,8 @@ import (
 
 func TestUserFindByIdNotFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
+
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
@@ -20,7 +22,7 @@ func TestUserFindByIdNotFound(t *testing.T) {
 		WithArgs(2).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "name"}))
 
-	user, _ := FindUserById(db, 2)
+	user, _ := s.FindUserById(2)
 
 	if user != nil {
 		t.Fatalf("Error: user should be nil for non existing id")
@@ -33,6 +35,8 @@ func TestUserFindByIdNotFound(t *testing.T) {
 
 func TestUserFindByIdSuccess(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
+
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
@@ -45,7 +49,7 @@ func TestUserFindByIdSuccess(t *testing.T) {
 		WithArgs(1).
 		WillReturnRows(rows)
 
-	user, err := FindUserById(db, 1)
+	user, err := s.FindUserById(1)
 
 	if user == nil {
 		t.Fatalf("Error: user should not be nil for non existing id")
@@ -62,11 +66,13 @@ func TestUserFindByIdSuccess(t *testing.T) {
 
 func TestFindUserByGoogleIdNotFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
+
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 
 	rows := mock.NewRows([]string{"id", "google_uid"})
 
@@ -74,7 +80,7 @@ func TestFindUserByGoogleIdNotFound(t *testing.T) {
 		WithArgs("12345").
 		WillReturnRows(rows)
 
-	user, err := FindUserByGoogleUid(db, "12345")
+	user, err := s.FindUserByGoogleUid("12345")
 	if user != nil {
 		t.Fatalf("User should be nil for non existing google_uid")
 	}
@@ -87,11 +93,13 @@ func TestFindUserByGoogleIdNotFound(t *testing.T) {
 
 func TestFindUserByGoogleIdFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
+
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 
 	rows := mock.NewRows([]string{"id", "google_uid"}).AddRow(1, "12345")
 
@@ -99,7 +107,7 @@ func TestFindUserByGoogleIdFound(t *testing.T) {
 		WithArgs("12345").
 		WillReturnRows(rows)
 
-	user, err := FindUserByGoogleUid(db, "12345")
+	user, err := s.FindUserByGoogleUid("12345")
 	if user == nil {
 		t.Fatalf("User should not be nil for existing google_uid")
 	}
@@ -112,11 +120,13 @@ func TestFindUserByGoogleIdFound(t *testing.T) {
 
 func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
+
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 	ts := time.Now()
 
 	rows := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"})
@@ -125,7 +135,7 @@ func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 		WithArgs("%other%", ts.Format(time.RFC3339), 543.21).
 		WillReturnRows(rows)
 
-	receipt, err := FindReceiptBySupermarketDateAmount(db, "other", ts, 543.21)
+	receipt, err := s.FindReceiptBySupermarketDateAmount("other", ts, 543.21)
 
 	if receipt != nil {
 		t.Fatalf("Receipt should not be nil for not existing params")
@@ -142,11 +152,13 @@ func TestFindReceiptBySupermarketDateAmountNotFound(t *testing.T) {
 
 func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
+
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 	ts := time.Now()
 
 	rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
@@ -156,7 +168,7 @@ func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 		WithArgs("%Any%", ts.Format(time.RFC3339), 123.45).
 		WillReturnRows(rows)
 
-	receipt, err := FindReceiptBySupermarketDateAmount(db, "Any", ts, 123.45)
+	receipt, err := s.FindReceiptBySupermarketDateAmount("Any", ts, 123.45)
 
 	if err != nil && err != sql.ErrNoRows {
 		t.Fatalf("Unexpected error: %s", err)
@@ -173,12 +185,13 @@ func TestFindReceiptBySupermarketDateAmountFound(t *testing.T) {
 
 func TestCreateReceipt(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 
 	ts := time.Now()
 
@@ -195,7 +208,7 @@ func TestCreateReceipt(t *testing.T) {
 	mock.ExpectCommit()
 
 	receipt := Receipt{UserID: 1, Supermarket: "Any", Date: ts, Total: 123.45}
-	created_receipt, err := CreateReceipt(db, &receipt)
+	created_receipt, err := s.CreateReceipt(&receipt)
 
 	if created_receipt != nil {
 		t.Fatalf("Created duplicated receipt")
@@ -209,12 +222,13 @@ func TestCreateReceipt(t *testing.T) {
 
 func TestCreateReceiptWithNullCurrency(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 
 	ts := time.Now()
 
@@ -229,7 +243,7 @@ func TestCreateReceiptWithNullCurrency(t *testing.T) {
 	mock.ExpectCommit()
 
 	receipt := Receipt{UserID: 1, Supermarket: "Any", Date: ts, Total: 123.45}
-	created_receipt, err := CreateReceipt(db, &receipt)
+	created_receipt, err := s.CreateReceipt(&receipt)
 
 	if created_receipt != nil {
 		t.Fatalf("Created duplicated receipt")
@@ -238,17 +252,17 @@ func TestCreateReceiptWithNullCurrency(t *testing.T) {
 	if err.Error() != "Receipt already exists" {
 		t.Fatalf("Unexpected error creating receipt: %s", err)
 	}
-
 }
 
 func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 
 	ts := time.Now()
 
@@ -280,7 +294,7 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 		WithArgs(1, 2.0, "Item 2", 22.0, 20.0).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
-	created_receipt, err := CreateReceipt(db, &receipt)
+	created_receipt, err := s.CreateReceipt(&receipt)
 
 	if created_receipt == nil {
 		t.Fatalf("Receipt not created")
@@ -295,12 +309,13 @@ func TestCreateDuplicatedReceiptForDifferentUser(t *testing.T) {
 
 func TestCreateNonDuplicatedReceipt(t *testing.T) {
 	db, mock, err := sqlmock.New()
+	s := Storage{db: db}
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s connecting to database", err)
 	}
 
-	defer db.Close()
+	defer s.db.Close()
 
 	ts := time.Now()
 
@@ -333,7 +348,7 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 		WithArgs(1, 2.0, "Item 2", 22.0, 20.0).
 		WillReturnResult(sqlmock.NewResult(2, 1))
 
-	created_receipt, err := CreateReceipt(db, &receipt)
+	created_receipt, err := s.CreateReceipt(&receipt)
 
 	if created_receipt == nil {
 		t.Fatalf("Receipt not created")
