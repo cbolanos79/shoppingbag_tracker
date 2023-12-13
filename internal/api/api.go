@@ -36,10 +36,10 @@ type ErrorMessage struct {
 }
 
 type Api struct {
-	s *model.Storage
+	s model.IStorage
 }
 
-func RegisterRoutes(s *model.Storage, e *echo.Echo, jwt_signature string) {
+func RegisterRoutes(s model.IStorage, e *echo.Echo, jwt_signature string) {
 
 	a := Api{
 		s: s,
