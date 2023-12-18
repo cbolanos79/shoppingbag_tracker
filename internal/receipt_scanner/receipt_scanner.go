@@ -151,7 +151,13 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		sunit_price := SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE")
 		var unit_price float64
 		if len(sunit_price) > 0 {
-			unit_price, err = strconv.ParseFloat(strings.Replace(sunit_price, ",", ".", -1), 64)
+			runit_price := amount_exp.Find([]byte(sunit_price))
+
+			if runit_price == nil {
+				return nil, fmt.Errorf("error parsing unit price: %s", sunit_price)
+			}
+
+			unit_price, err = strconv.ParseFloat(strings.Replace(string(runit_price), ",", ".", -1), 64)
 
 			if err != nil {
 				return nil, err
