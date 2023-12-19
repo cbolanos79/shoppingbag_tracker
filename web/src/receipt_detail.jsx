@@ -16,7 +16,7 @@ export default class ReceiptDetail extends Component {
                     <dt className="col-md-2 text-start">Supermarket</dt>
                     <dd className="col-md-10 text-start">{this.props.data.Supermarket}</dd>
                     <dt className="col-md-2 text-start">Date</dt>
-                    <dd className="col-md-10 text-start">{this.props.data.Date}</dd>
+                    <dd className="col-md-10 text-start">{new Date(Date.parse(this.props.data.Date)).toLocaleDateString(navigator.language)}</dd>
                     <dt className="col-md-2 text-start">Total</dt>
                     <dd className="col-md-10 text-start">{this.props.data.Total}&nbsp;{this.props.data.Currency}</dd>
                 </dl>
