@@ -160,7 +160,7 @@ func GetReceipts(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error getting receipts list", []string{err.Error()}})
 	}
 
-	return c.JSON(http.StatusOK, receipts)
+	return c.JSON(http.StatusOK, echo.Map{"receipts": receipts})
 }
 
 // Check if user from jwt exists or stop if not
