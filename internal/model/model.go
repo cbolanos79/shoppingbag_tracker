@@ -106,7 +106,7 @@ func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 	user := User{}
 
 	if err := row.Scan(&user.ID, &user.GoogleUID); err != nil {
-		log.Println("FindUserByGoogleUid - Error scanning row for google_uid: %s\n%v", google_uid, err)
+		log.Printf("FindUserByGoogleUid - Error scanning row for google_uid: %s\n%v", google_uid, err)
 		return nil, fmt.Errorf("FindUserByGoogleUid - Error scanning row for google_uid: %s\n%v", google_uid, err)
 	}
 	return &user, nil
