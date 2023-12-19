@@ -2,6 +2,7 @@ package receipt_scanner
 
 import (
 	"fmt"
+	"log"
 	mime "mime/multipart"
 	"regexp"
 	"strconv"
@@ -21,6 +22,16 @@ func NewAwsSession() (*session.Session, error) {
 	}
 
 	return aws_session, nil
+}
+
+func logReceiptError(receipt *model.Receipt, msg string, err error, line ...int) {
+	line_error := ""
+	if len(line) > 0 {
+		line_error = fmt.Sprintf("\nLine: %d\n", line)
+	}
+
+	s := fmt.Sprintf("error parsing receipt - %s\nreceipt: %v%serror: %v", msg, receipt, line_error, err)
+	log.Print(s)
 }
 
 // Auxiliar function to search string into an array of textract.ExpenseField
@@ -92,12 +103,14 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		date, err = time.Parse("02/01/2006", receipt_date)
 
 		if err != nil {
+			logReceiptError(receipt, fmt.Sprintf("date field with format dd/mm/yyyy: %s", receipt_date), err)
 			return nil, err
 		}
 	} else {
 		date, err = time.Parse("02.01.06", receipt_date)
 
 		if err != nil {
+			logReceiptError(receipt, fmt.Sprintf("date field with format dd.mm.yy: %s", receipt_date), err)
 			return nil, err
 		}
 	}
@@ -110,12 +123,14 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 
 	total := amount_exp.Find([]byte(stotal))
 	if total == nil {
-		return nil, fmt.Errorf("error parsing total amount: %s", stotal)
+		log.Printf("error parsing total amount: %s", stotal)
+		return nil, err
 	}
 
 	receipt.Total, err = strconv.ParseFloat(strings.Replace(string(total), ",", ".", -1), 64)
 
 	if err != nil {
+		logReceiptError(receipt, fmt.Sprintf("total field: %s", total), err)
 		return nil, err
 	}
 
@@ -131,9 +146,22 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 
 		// Some receipts have not quantity field, therefore set 1 by default
 		if len(squantity) > 0 {
-			quantity, err = strconv.ParseFloat(strings.Replace(squantity, ",", ".", -1), 64)
+
+			// Sometimes a 1 can be scanned as I
+			if squantity == "I" {
+				squantity = "1"
+			}
+
+			quantity, err = strconv.ParseFloat(strings.Replace(string(squantity), ",", ".", -1), 64)
 			if err != nil {
-				return nil, err
+				// Extract numeric value for quantity because sometimes it's an items weight instead a numeric value
+				rquantity := amount_exp.Find([]byte(squantity))
+				quantity, err = strconv.ParseFloat(strings.Replace(string(rquantity), ",", ".", -1), 64)
+
+				if rquantity == nil {
+					logReceiptError(receipt, fmt.Sprintf("quantity field: %s", rquantity), err, index)
+					return nil, err
+				}
 			}
 		}
 
@@ -142,6 +170,7 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		if len(sprice) > 0 {
 			price, err = strconv.ParseFloat(strings.Replace(sprice, ",", ".", -1), 64)
 			if err != nil {
+				logReceiptError(receipt, fmt.Sprintf("price field: %s", sprice), err, index)
 				return nil, err
 			}
 		} else {
@@ -151,9 +180,17 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 		sunit_price := SearchExpense(line_item.LineItemExpenseFields, "UNIT_PRICE")
 		var unit_price float64
 		if len(sunit_price) > 0 {
-			unit_price, err = strconv.ParseFloat(strings.Replace(sunit_price, ",", ".", -1), 64)
+			runit_price := amount_exp.Find([]byte(sunit_price))
+
+			if runit_price == nil {
+				logReceiptError(receipt, fmt.Sprintf("unit price: %s", sunit_price), err, index)
+				return nil, err
+			}
+
+			unit_price, err = strconv.ParseFloat(strings.Replace(string(runit_price), ",", ".", -1), 64)
 
 			if err != nil {
+				logReceiptError(receipt, fmt.Sprintf("price float value: %s", runit_price), err, index)
 				return nil, err
 			}
 		}
