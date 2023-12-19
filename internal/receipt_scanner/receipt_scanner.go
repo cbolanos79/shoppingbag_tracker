@@ -146,10 +146,22 @@ func Scan(aws_session *session.Session, file mime.File, size int64) (*model.Rece
 
 		// Some receipts have not quantity field, therefore set 1 by default
 		if len(squantity) > 0 {
-			quantity, err = strconv.ParseFloat(strings.Replace(squantity, ",", ".", -1), 64)
+
+			// Sometimes a 1 can be scanned as I
+			if squantity == "I" {
+				squantity = "1"
+			}
+
+			quantity, err = strconv.ParseFloat(strings.Replace(string(squantity), ",", ".", -1), 64)
 			if err != nil {
-				logReceiptError(receipt, fmt.Sprintf("quantity field: %s", squantity), err, index)
-				return nil, err
+				// Extract numeric value for quantity because sometimes it's an items weight instead a numeric value
+				rquantity := amount_exp.Find([]byte(squantity))
+				quantity, err = strconv.ParseFloat(strings.Replace(string(rquantity), ",", ".", -1), 64)
+
+				if rquantity == nil {
+					logReceiptError(receipt, fmt.Sprintf("quantity field: %s", rquantity), err, index)
+					return nil, err
+				}
 			}
 		}
 
