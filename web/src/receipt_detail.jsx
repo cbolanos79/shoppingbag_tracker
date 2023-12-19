@@ -32,7 +32,7 @@ export default class ReceiptDetail extends Component {
                     </thead>
                     <tbody>
                             {this.props.data.Items.map((item => {
-                                return <tr key={item.Id}>
+                                return <tr key={item.ID}>
                                     <td>{item.Quantity}</td>
                                     <td>{item.Name}</td>
                                     <td>{item.UnitPrice}</td>
