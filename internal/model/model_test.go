@@ -417,14 +417,14 @@ func TestFindReceiptForUser(t *testing.T) {
 	receipt_row := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"}).
 		AddRow(receipt_id, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts WHERE id = ? AND user_id = ?")).
 		WithArgs(receipt_id, user_id).
 		WillReturnRows(receipt_row)
 
 	items_rows := mock.NewRows([]string{"id", "receipt_id", "quantity", "name", "unit_price", "price"}).
 		AddRow(1, receipt_id, 1, "Any", 2, 3)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ?")).
 		WithArgs(receipt_id).
 		WillReturnRows(items_rows)
 
@@ -457,14 +457,14 @@ func TestFindReceiptNotFoundForUser(t *testing.T) {
 	receipt_row := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"}).
 		AddRow(receipt_id, "Any", ts, "EUR", 123.45)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts WHERE id = ? AND user_id = ?")).
 		WithArgs(receipt_id, user_id).
 		WillReturnRows(receipt_row)
 
 	items_rows := mock.NewRows([]string{"id", "receipt_id", "quantity", "name", "unit_price", "price"}).
 		AddRow(1, receipt_id, 1, "Any", 2, 3)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ?")).
 		WithArgs(receipt_id).
 		WillReturnRows(items_rows)
 
