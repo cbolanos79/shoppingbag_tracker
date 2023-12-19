@@ -209,7 +209,10 @@ func FindReceiptForUser(db *sql.DB, receipt_id int, user_id int) (*Receipt, erro
 
 	receipt := Receipt{}
 
-	err := row.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &receipt.Currency, &receipt.Total)
+	var currency sql.NullString
+
+	err := row.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &currency, &receipt.Total)
+	receipt.Currency = currency.String
 
 	if err != nil {
 		return nil, err
