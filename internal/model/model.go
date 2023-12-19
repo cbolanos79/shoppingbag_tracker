@@ -182,3 +182,23 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 	tx.Commit()
 	return receipt, nil
 }
+
+func FindAllReceiptsForUser(db *sql.DB, user *User) (*[]Receipt, error) {
+	rows, err := db.Query("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?", user.ID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var receipts []Receipt
+
+	for rows.Next() {
+		receipt := Receipt{}
+		rows.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &receipt.Total)
+		receipts = append(receipts, receipt)
+	}
+
+	return &receipts, nil
+}

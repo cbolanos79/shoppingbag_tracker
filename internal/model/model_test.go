@@ -345,3 +345,56 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 
 	mock.ExpectCommit()
 }
+
+func TestFindAllReceiptsForUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	_, err = FindAllReceiptsForUser(db, &user)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserEmptyResults(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	user_id := 2
+	user := User{ID: 2}
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"})
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	_, err = FindAllReceiptsForUser(db, &user)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
