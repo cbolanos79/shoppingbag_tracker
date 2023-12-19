@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUserFindByIdNotFound(t *testing.T) {
@@ -397,4 +398,81 @@ func TestFindAllReceiptsForUserEmptyResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error %s geting receipts for user", err)
 	}
+}
+
+func TestFindReceiptForUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	receipt_id := 1
+	user_id := 2
+
+	receipt_row := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"}).
+		AddRow(receipt_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts")).
+		WithArgs(receipt_id, user_id).
+		WillReturnRows(receipt_row)
+
+	items_rows := mock.NewRows([]string{"id", "receipt_id", "quantity", "name", "unit_price", "price"}).
+		AddRow(1, receipt_id, 1, "Any", 2, 3)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items")).
+		WithArgs(receipt_id).
+		WillReturnRows(items_rows)
+
+	receipt, err := FindReceiptForUser(db, receipt_id, user_id)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s getting receipt for user", err)
+	}
+
+	assert.Equal(t, receipt.ID, int64(1), "Receipt ID should equal 1")
+	assert.Equal(t, len(receipt.Items), 1, "Receipt items should have 1 item")
+
+}
+
+func TestFindReceiptNotFoundForUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	receipt_id := 1
+	user_id := 1
+	other_user_id := 2
+
+	receipt_row := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"}).
+		AddRow(receipt_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts")).
+		WithArgs(receipt_id, user_id).
+		WillReturnRows(receipt_row)
+
+	items_rows := mock.NewRows([]string{"id", "receipt_id", "quantity", "name", "unit_price", "price"}).
+		AddRow(1, receipt_id, 1, "Any", 2, 3)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items")).
+		WithArgs(receipt_id).
+		WillReturnRows(items_rows)
+
+	receipt, err := FindReceiptForUser(db, receipt_id, other_user_id)
+
+	if err == nil {
+		t.Fatalf("Expected error %s getting receipt for user", err)
+	}
+
+	assert.Nil(t, receipt, "Receipt should be nil")
 }

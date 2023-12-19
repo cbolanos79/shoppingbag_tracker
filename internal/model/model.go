@@ -202,3 +202,31 @@ func FindAllReceiptsForUser(db *sql.DB, user *User) (*[]Receipt, error) {
 
 	return &receipts, nil
 }
+
+func FindReceiptForUser(db *sql.DB, receipt_id int, user_id int) (*Receipt, error) {
+	// Get receipt information filtering by given user
+	row := db.QueryRow("SELECT id, supermarket, receipt_date, currency, total FROM receipts WHERE receipt_id = ? AND user_id = ?", receipt_id, user_id)
+
+	receipt := Receipt{}
+
+	err := row.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &receipt.Currency, &receipt.Total)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Get receipt items
+	rows, err := db.Query("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ?", receipt_id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		item := ReceiptItem{}
+		rows.Scan(&item.Quantity, &item.Name, &item.Price, &item.UnitPrice)
+		receipt.Items = append(receipt.Items, item)
+	}
+	return &receipt, nil
+
+}
