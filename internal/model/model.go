@@ -184,7 +184,7 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 }
 
 func FindAllReceiptsForUser(db *sql.DB, user *User) (*[]Receipt, error) {
-	rows, err := db.Query("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?", user.ID)
+	rows, err := db.Query("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? ORDER BY receipt_date DESC", user.ID)
 
 	if err != nil {
 		return nil, err
