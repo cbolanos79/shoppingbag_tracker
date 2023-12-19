@@ -147,7 +147,7 @@ func GetReceipts(c echo.Context) error {
 
 	db, err := model.NewDB()
 	if err != nil {
-		log.Println("CreateReceipt - Error connecting to database\n", err)
+		log.Println("GetReceipts - Error connecting to database\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
 	}
 	defer db.Close()
@@ -156,7 +156,7 @@ func GetReceipts(c echo.Context) error {
 
 	receipts, err := model.FindAllReceiptsForUser(db, user)
 	if err != nil {
-		log.Println("CreateReceipt - Error connecting to database\n", err)
+		log.Println("GetReceipts - Error connecting to database\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error getting receipts list", []string{err.Error()}})
 	}
 
@@ -168,7 +168,7 @@ func GetReceipt(c echo.Context) error {
 
 	db, err := model.NewDB()
 	if err != nil {
-		log.Println("CreateReceipt - Error connecting to database\n", err)
+		log.Println("GetReceipt - Error connecting to database\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
 	}
 	defer db.Close()
@@ -177,13 +177,13 @@ func GetReceipt(c echo.Context) error {
 	receipt_id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 
 	if err != nil {
-		log.Println("CreateReceipt - Error connecting to database\n", err)
+		log.Println("GetReceipt - Error connecting to database\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
 	}
 
 	receipt, err := model.FindReceiptForUser(db, int(receipt_id), int(user.ID))
 	if err != nil {
-		log.Println("CreateReceipt - Error connecting to database\n", err)
+		log.Println("GetReceipt - Error connecting to database\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error getting receipts list", []string{err.Error()}})
 	}
 
