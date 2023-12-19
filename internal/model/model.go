@@ -219,7 +219,7 @@ func FindReceiptForUser(db *sql.DB, receipt_id int, user_id int) (*Receipt, erro
 	}
 
 	// Get receipt items
-	rows, err := db.Query("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ?", receipt_id)
+	rows, err := db.Query("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ? ORDER BY quantity DESC", receipt_id)
 
 	if err != nil {
 		return nil, err
