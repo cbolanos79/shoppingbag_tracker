@@ -163,6 +163,33 @@ func GetReceipts(c echo.Context) error {
 	return c.JSON(http.StatusOK, echo.Map{"receipts": receipts})
 }
 
+// Return list of items for given receipt owned by user
+func GetReceipt(c echo.Context) error {
+
+	db, err := model.NewDB()
+	if err != nil {
+		log.Println("CreateReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
+	}
+	defer db.Close()
+
+	user := c.Get("user_id").(*model.User)
+	receipt_id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err != nil {
+		log.Println("CreateReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
+	}
+
+	receipt, err := model.FindReceiptForUser(db, int(receipt_id), int(user.ID))
+	if err != nil {
+		log.Println("CreateReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error getting receipts list", []string{err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"receipt": receipt})
+}
+
 // Check if user from jwt exists or stop if not
 func UserMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
