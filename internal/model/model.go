@@ -32,7 +32,8 @@ type Receipt struct {
 
 type ReceiptFilter struct {
 	Supermarket string
-	Page        int
+	Page        int64
+	PerPage     int64
 	MinDate     *time.Time
 	MaxDate     *time.Time
 }
@@ -204,6 +205,14 @@ func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]
 			parameters = append(parameters, fmt.Sprintf("%%%s%%", filters.Supermarket))
 			sql = fmt.Sprintf("%s AND supermarket like ?", sql)
 		}
+
+		// Page and per page
+		if filters.Page > 0 && filters.PerPage > 0 {
+			limit = fmt.Sprintf("LIMIT %d", filters.PerPage)
+			if filters.Page > 1 {
+				offset = fmt.Sprintf("OFFSET %d", (filters.Page-1)*(filters.PerPage))
+			}
+		}
 	}
 
 	sql = fmt.Sprintf("%s ORDER BY receipt_date DESC %s %s", sql, limit, offset)
@@ -256,3 +265,13 @@ func FindReceiptForUser(db *sql.DB, receipt_id int, user_id int) (*Receipt, erro
 	return &receipt, nil
 
 }
+
+/*
+	// Page and per page
+	if filters.Page > 0 && filters.PerPage > 0 {
+		limit = fmt.Sprintf("LIMIT %d", filters.PerPage)
+		if filters.Page > 1 {
+			offset = fmt.Sprintf("OFFSET %d", (filters.Page-1)*(filters.PerPage))
+		}
+	}
+*/

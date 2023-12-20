@@ -508,3 +508,67 @@ func TestFindAllReceiptsForUserFilterBySupermarket(t *testing.T) {
 		t.Fatalf("Unexpected error %s geting receipts for user", err)
 	}
 }
+
+func TestFindAllReceiptsForUserFilterByPageOne(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByPageTwoOrMore(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 2
+	var per_page int64 = 5
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? ORDER BY receipt_date DESC LIMIT 5 OFFSET 5")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
