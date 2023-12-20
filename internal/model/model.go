@@ -30,6 +30,13 @@ type Receipt struct {
 	Items       []ReceiptItem
 }
 
+type ReceiptFilter struct {
+	Supermarket string
+	Page        int
+	MinDate     *time.Time
+	MaxDate     *time.Time
+}
+
 type User struct {
 	ID        int64  `db:"id"`
 	GoogleUID string `db:"google_uid"`
