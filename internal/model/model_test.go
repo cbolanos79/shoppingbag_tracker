@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"regexp"
 	"testing"
 	"time"
@@ -475,4 +476,35 @@ func TestFindReceiptNotFoundForUser(t *testing.T) {
 	}
 
 	assert.Nil(t, receipt, "Receipt should be nil")
+}
+
+func TestFindAllReceiptsForUserFilterBySupermarket(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	supermarket := "merc"
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND supermarket like ?")).
+		WithArgs(user_id, fmt.Sprintf("%%%s%%", supermarket)).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Supermarket: supermarket}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
 }

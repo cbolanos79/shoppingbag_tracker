@@ -190,8 +190,24 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 	return receipt, nil
 }
 
-func FindAllReceiptsForUser(db *sql.DB, user *User) (*[]Receipt, error) {
-	rows, err := db.Query("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? ORDER BY receipt_date DESC", user.ID)
+func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]Receipt, error) {
+	var parameters []interface{}
+	parameters = append(parameters, user.ID)
+
+	sql := "SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?"
+	var limit, offset string
+
+	// If there are filters apply the available ones
+	if filters != nil {
+		// Supermarket
+		if len(filters.Supermarket) > 0 {
+			parameters = append(parameters, fmt.Sprintf("%%%s%%", filters.Supermarket))
+			sql = fmt.Sprintf("%s AND supermarket like ?", sql)
+		}
+	}
+
+	sql = fmt.Sprintf("%s ORDER BY receipt_date DESC %s %s", sql, limit, offset)
+	rows, err := db.Query(sql, parameters...)
 
 	if err != nil {
 		return nil, err
