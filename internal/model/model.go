@@ -213,6 +213,23 @@ func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]
 				offset = fmt.Sprintf("OFFSET %d", (filters.Page-1)*(filters.PerPage))
 			}
 		}
+
+		// Date
+		if filters.MinDate != nil {
+			parameters = append(parameters, filters.MinDate)
+			sql = fmt.Sprintf("%s AND DATE(receipt_date) >= DATE(?)", sql)
+
+			// Set max date if present
+			if filters.MaxDate != nil {
+
+				// Avoid setting max date before min date
+				if filters.MaxDate.Before(*filters.MinDate) {
+					return nil, errors.New("MaxDate can not no lower than MinDate")
+				}
+				parameters = append(parameters, filters.MaxDate)
+				sql = fmt.Sprintf("%s AND DATE(receipt_date) <= DATE(?)", sql)
+			}
+		}
 	}
 
 	sql = fmt.Sprintf("%s ORDER BY receipt_date DESC %s %s", sql, limit, offset)

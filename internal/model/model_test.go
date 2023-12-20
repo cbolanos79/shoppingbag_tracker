@@ -572,3 +572,108 @@ func TestFindAllReceiptsForUserFilterByPageTwoOrMore(t *testing.T) {
 		t.Fatalf("Unexpected error %s geting receipts for user", err)
 	}
 }
+
+func TestFindAllReceiptsForUserFilterByMinDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND DATE(receipt_date) >= DATE(?) ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id, ts).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page, MinDate: &ts}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByMaxDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+	ts_min := time.Now().Add(-time.Hour * 1)
+	ts_max := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND DATE(receipt_date) >= DATE(?) AND DATE(receipt_date) <= DATE(?) ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id, ts_min, ts_max).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page, MinDate: &ts_min, MaxDate: &ts_max}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByMaxDateBeforeMinDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+	ts_min := time.Now()
+	ts_max := time.Now().Add(-time.Hour * 1)
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND receipt_date >= ? AND receipt_date <= ? ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id, ts_min, ts_max).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page, MinDate: &ts_min, MaxDate: &ts_max}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err == nil {
+		t.Fatal("Expected geting receipts for user with MinDate lower than MaxDate to return error")
+
+	}
+
+	if err.Error() != "MaxDate can not no lower than MinDate" {
+		t.Fatalf("Unexpected error getting receipts for user with MinDate lower than MaxDate: %v", err)
+	}
+}
