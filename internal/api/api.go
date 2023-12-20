@@ -159,6 +159,22 @@ func GetReceipts(c echo.Context) error {
 	// Supermarket filter
 	filters.Supermarket = c.QueryParam("supermarket")
 
+	page := c.QueryParam("page")
+	per_page := c.QueryParam("per_page")
+
+	// Page filter
+	if len(page) > 0 && len(per_page) > 0 {
+		filters.Page, err = strconv.ParseInt(page, 10, 64)
+		if err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in page param format", []string{err.Error()}})
+		}
+
+		filters.PerPage, err = strconv.ParseInt(per_page, 10, 64)
+		if err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in per_page param format", []string{err.Error()}})
+		}
+	}
+
 	receipts, err := model.FindAllReceiptsForUser(db, user, &filters)
 	if err != nil {
 		log.Println("GetReceipts - Error connecting to database\n", err)
