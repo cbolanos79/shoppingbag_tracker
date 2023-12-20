@@ -11,6 +11,7 @@ import (
 
 	model "github.com/cbolanos79/shoppingbag_tracker/internal/model"
 	"github.com/cbolanos79/shoppingbag_tracker/internal/receipt_scanner"
+	"github.com/relvacode/iso8601"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -161,6 +162,8 @@ func GetReceipts(c echo.Context) error {
 
 	page := c.QueryParam("page")
 	per_page := c.QueryParam("per_page")
+	min_date := c.QueryParam("min_date")
+	max_date := c.QueryParam("max_date")
 
 	// Page filter
 	if len(page) > 0 && len(per_page) > 0 {
@@ -172,6 +175,28 @@ func GetReceipts(c echo.Context) error {
 		filters.PerPage, err = strconv.ParseInt(per_page, 10, 64)
 		if err != nil {
 			return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in per_page param format", []string{err.Error()}})
+		}
+	}
+
+	// Minimum date
+	if len(min_date) > 0 {
+		// Parse ISO8601 format
+		tmin_date, err := iso8601.ParseString(min_date)
+		if err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in min_date param format", []string{err.Error()}})
+		}
+
+		filters.MinDate = &tmin_date
+
+		// Maximum date
+		if len(max_date) > 0 && filters.MinDate != nil {
+			// Parse ISO8601 format
+			tmax_date, err := iso8601.ParseString(max_date)
+			if err != nil {
+				return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in max_date param format", []string{err.Error()}})
+			}
+
+			filters.MaxDate = &tmax_date
 		}
 	}
 
