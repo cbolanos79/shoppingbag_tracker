@@ -154,7 +154,12 @@ func GetReceipts(c echo.Context) error {
 
 	user := c.Get("user_id").(*model.User)
 
-	receipts, err := model.FindAllReceiptsForUser(db, user)
+	var filters model.ReceiptFilter
+
+	// Supermarket filter
+	filters.Supermarket = c.QueryParam("supermarket")
+
+	receipts, err := model.FindAllReceiptsForUser(db, user, &filters)
 	if err != nil {
 		log.Println("GetReceipts - Error connecting to database\n", err)
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error getting receipts list", []string{err.Error()}})
