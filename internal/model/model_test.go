@@ -368,7 +368,7 @@ func TestFindAllReceiptsForUser(t *testing.T) {
 		WithArgs(user_id).
 		WillReturnRows(receipt_rows)
 
-	_, err = FindAllReceiptsForUser(db, &user)
+	_, err = FindAllReceiptsForUser(db, &user, nil)
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s geting receipts for user", err)
@@ -393,7 +393,7 @@ func TestFindAllReceiptsForUserEmptyResults(t *testing.T) {
 		WithArgs(user_id).
 		WillReturnRows(receipt_rows)
 
-	_, err = FindAllReceiptsForUser(db, &user)
+	_, err = FindAllReceiptsForUser(db, &user, nil)
 
 	if err != nil {
 		t.Fatalf("Unexpected error %s geting receipts for user", err)
