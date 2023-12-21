@@ -241,7 +241,7 @@ func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]
 
 	defer rows.Close()
 
-	var receipts []Receipt
+	receipts := []Receipt{}
 
 	for rows.Next() {
 		receipt := Receipt{}
