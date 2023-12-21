@@ -46,6 +46,9 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.CORS())
 
+	e.GET("/receipts/:id", api.GetReceipt, echojwt.JWT([]byte(jwt_signature)), api.UserMiddleware)
+	e.GET("/receipts", api.GetReceipts, echojwt.JWT([]byte(jwt_signature)), api.UserMiddleware)
+
 	e.POST("/receipt", api.CreateReceipt, echojwt.JWT([]byte(jwt_signature)), api.UserMiddleware)
 	e.POST("/login/google", api.LoginGoogle)
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%s", os.Getenv("PORT"))))

@@ -2,11 +2,13 @@ package model
 
 import (
 	"database/sql"
+	"fmt"
 	"regexp"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUserFindByIdNotFound(t *testing.T) {
@@ -344,4 +346,334 @@ func TestCreateNonDuplicatedReceipt(t *testing.T) {
 	}
 
 	mock.ExpectCommit()
+}
+
+func TestFindAllReceiptsForUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	_, err = FindAllReceiptsForUser(db, &user, nil)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserEmptyResults(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	user_id := 2
+	user := User{ID: 2}
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"})
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	_, err = FindAllReceiptsForUser(db, &user, nil)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindReceiptForUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	receipt_id := 1
+	user_id := 2
+
+	receipt_row := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"}).
+		AddRow(receipt_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts WHERE id = ? AND user_id = ?")).
+		WithArgs(receipt_id, user_id).
+		WillReturnRows(receipt_row)
+
+	items_rows := mock.NewRows([]string{"id", "receipt_id", "quantity", "name", "unit_price", "price"}).
+		AddRow(1, receipt_id, 1, "Any", 2, 3)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ?")).
+		WithArgs(receipt_id).
+		WillReturnRows(items_rows)
+
+	receipt, err := FindReceiptForUser(db, receipt_id, user_id)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s getting receipt for user", err)
+	}
+
+	assert.Equal(t, receipt.ID, int64(1), "Receipt ID should equal 1")
+	assert.Equal(t, len(receipt.Items), 1, "Receipt items should have 1 item")
+
+}
+
+func TestFindReceiptNotFoundForUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	receipt_id := 1
+	user_id := 1
+	other_user_id := 2
+
+	receipt_row := mock.NewRows([]string{"id", "supermarket", "date", "currency", "total"}).
+		AddRow(receipt_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, currency, total FROM receipts WHERE id = ? AND user_id = ?")).
+		WithArgs(receipt_id, user_id).
+		WillReturnRows(receipt_row)
+
+	items_rows := mock.NewRows([]string{"id", "receipt_id", "quantity", "name", "unit_price", "price"}).
+		AddRow(1, receipt_id, 1, "Any", 2, 3)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ?")).
+		WithArgs(receipt_id).
+		WillReturnRows(items_rows)
+
+	receipt, err := FindReceiptForUser(db, receipt_id, other_user_id)
+
+	if err == nil {
+		t.Fatalf("Expected error %s getting receipt for user", err)
+	}
+
+	assert.Nil(t, receipt, "Receipt should be nil")
+}
+
+func TestFindAllReceiptsForUserFilterBySupermarket(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	supermarket := "merc"
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND supermarket like ?")).
+		WithArgs(user_id, fmt.Sprintf("%%%s%%", supermarket)).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Supermarket: supermarket}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByPageOne(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByPageTwoOrMore(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 2
+	var per_page int64 = 5
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? ORDER BY receipt_date DESC LIMIT 5 OFFSET 5")).
+		WithArgs(user_id).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByMinDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND DATE(receipt_date) >= DATE(?) ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id, ts).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page, MinDate: &ts}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByMaxDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+	ts_min := time.Now().Add(-time.Hour * 1)
+	ts_max := time.Now()
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND DATE(receipt_date) >= DATE(?) AND DATE(receipt_date) <= DATE(?) ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id, ts_min, ts_max).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page, MinDate: &ts_min, MaxDate: &ts_max}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s geting receipts for user", err)
+	}
+}
+
+func TestFindAllReceiptsForUserFilterByMaxDateBeforeMinDate(t *testing.T) {
+	db, mock, err := sqlmock.New()
+
+	if err != nil {
+		t.Fatalf("Unexpected error %s connecting to database", err)
+	}
+
+	defer db.Close()
+
+	ts := time.Now()
+	ts_min := time.Now()
+	ts_max := time.Now().Add(-time.Hour * 1)
+
+	user_id := 1
+	user := User{ID: 1}
+	var page int64 = 1
+	var per_page int64 = 1
+
+	receipt_rows := mock.NewRows([]string{"id", "user_id", "supermarket", "date", "currency", "total"}).
+		AddRow(1, user_id, "Any", ts, "EUR", 123.45)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ? AND receipt_date >= ? AND receipt_date <= ? ORDER BY receipt_date DESC LIMIT 1")).
+		WithArgs(user_id, ts_min, ts_max).
+		WillReturnRows(receipt_rows)
+
+	filters := ReceiptFilter{Page: page, PerPage: per_page, MinDate: &ts_min, MaxDate: &ts_max}
+
+	_, err = FindAllReceiptsForUser(db, &user, &filters)
+
+	if err == nil {
+		t.Fatal("Expected geting receipts for user with MinDate lower than MaxDate to return error")
+
+	}
+
+	if err.Error() != "MaxDate can not no lower than MinDate" {
+		t.Fatalf("Unexpected error getting receipts for user with MinDate lower than MaxDate: %v", err)
+	}
 }

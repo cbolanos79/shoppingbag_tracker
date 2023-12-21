@@ -11,6 +11,7 @@ import (
 
 	model "github.com/cbolanos79/shoppingbag_tracker/internal/model"
 	"github.com/cbolanos79/shoppingbag_tracker/internal/receipt_scanner"
+	"github.com/relvacode/iso8601"
 
 	"github.com/golang-jwt/jwt/v5"
 
@@ -140,6 +141,99 @@ func CreateReceipt(c echo.Context) error {
 		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error creating receipt", []string{err.Error()}})
 	}
 	return c.JSON(http.StatusOK, echo.Map{"message": "Receipt created successfully", "receipt": receipt})
+}
+
+// Return list of receipts for current user
+func GetReceipts(c echo.Context) error {
+
+	db, err := model.NewDB()
+	if err != nil {
+		log.Println("GetReceipts - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
+	}
+	defer db.Close()
+
+	user := c.Get("user_id").(*model.User)
+
+	var filters model.ReceiptFilter
+
+	// Supermarket filter
+	filters.Supermarket = c.QueryParam("supermarket")
+
+	page := c.QueryParam("page")
+	per_page := c.QueryParam("per_page")
+	min_date := c.QueryParam("min_date")
+	max_date := c.QueryParam("max_date")
+
+	// Page filter
+	if len(page) > 0 && len(per_page) > 0 {
+		filters.Page, err = strconv.ParseInt(page, 10, 64)
+		if err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in page param format", []string{err.Error()}})
+		}
+
+		filters.PerPage, err = strconv.ParseInt(per_page, 10, 64)
+		if err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in per_page param format", []string{err.Error()}})
+		}
+	}
+
+	// Minimum date
+	if len(min_date) > 0 {
+		// Parse ISO8601 format
+		tmin_date, err := iso8601.ParseString(min_date)
+		if err != nil {
+			return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in min_date param format", []string{err.Error()}})
+		}
+
+		filters.MinDate = &tmin_date
+
+		// Maximum date
+		if len(max_date) > 0 && filters.MinDate != nil {
+			// Parse ISO8601 format
+			tmax_date, err := iso8601.ParseString(max_date)
+			if err != nil {
+				return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error in max_date param format", []string{err.Error()}})
+			}
+
+			filters.MaxDate = &tmax_date
+		}
+	}
+
+	receipts, err := model.FindAllReceiptsForUser(db, user, &filters)
+	if err != nil {
+		log.Println("GetReceipts - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error getting receipts list", []string{err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"receipts": receipts})
+}
+
+// Return list of items for given receipt owned by user
+func GetReceipt(c echo.Context) error {
+
+	db, err := model.NewDB()
+	if err != nil {
+		log.Println("GetReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
+	}
+	defer db.Close()
+
+	user := c.Get("user_id").(*model.User)
+	receipt_id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err != nil {
+		log.Println("GetReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error connecting to database", []string{err.Error()}})
+	}
+
+	receipt, err := model.FindReceiptForUser(db, int(receipt_id), int(user.ID))
+	if err != nil {
+		log.Println("GetReceipt - Error connecting to database\n", err)
+		return c.JSON(http.StatusUnprocessableEntity, ErrorMessage{"Error getting receipts list", []string{err.Error()}})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{"receipt": receipt})
 }
 
 // Check if user from jwt exists or stop if not

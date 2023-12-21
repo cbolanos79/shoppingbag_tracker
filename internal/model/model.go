@@ -30,6 +30,14 @@ type Receipt struct {
 	Items       []ReceiptItem
 }
 
+type ReceiptFilter struct {
+	Supermarket string
+	Page        int64
+	PerPage     int64
+	MinDate     *time.Time
+	MaxDate     *time.Time
+}
+
 type User struct {
 	ID        int64  `db:"id"`
 	GoogleUID string `db:"google_uid"`
@@ -106,7 +114,7 @@ func FindUserByGoogleUid(db *sql.DB, google_uid string) (*User, error) {
 	user := User{}
 
 	if err := row.Scan(&user.ID, &user.GoogleUID); err != nil {
-		log.Println("FindUserByGoogleUid - Error scanning row for google_uid: %s\n%v", google_uid, err)
+		log.Printf("FindUserByGoogleUid - Error scanning row for google_uid: %s\n%v", google_uid, err)
 		return nil, fmt.Errorf("FindUserByGoogleUid - Error scanning row for google_uid: %s\n%v", google_uid, err)
 	}
 	return &user, nil
@@ -182,3 +190,105 @@ func CreateReceipt(db *sql.DB, receipt *Receipt) (*Receipt, error) {
 	tx.Commit()
 	return receipt, nil
 }
+
+func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]Receipt, error) {
+	var parameters []interface{}
+	parameters = append(parameters, user.ID)
+
+	sql := "SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?"
+	var limit, offset string
+
+	// If there are filters apply the available ones
+	if filters != nil {
+		// Supermarket
+		if len(filters.Supermarket) > 0 {
+			parameters = append(parameters, fmt.Sprintf("%%%s%%", filters.Supermarket))
+			sql = fmt.Sprintf("%s AND supermarket like ?", sql)
+		}
+
+		// Page and per page
+		if filters.Page > 0 && filters.PerPage > 0 {
+			limit = fmt.Sprintf("LIMIT %d", filters.PerPage)
+			if filters.Page > 1 {
+				offset = fmt.Sprintf("OFFSET %d", (filters.Page-1)*(filters.PerPage))
+			}
+		}
+
+		// Date
+		if filters.MinDate != nil {
+			parameters = append(parameters, filters.MinDate)
+			sql = fmt.Sprintf("%s AND DATE(receipt_date) >= DATE(?)", sql)
+
+			// Set max date if present
+			if filters.MaxDate != nil {
+
+				// Avoid setting max date before min date
+				if filters.MaxDate.Before(*filters.MinDate) {
+					return nil, errors.New("MaxDate can not no lower than MinDate")
+				}
+				parameters = append(parameters, filters.MaxDate)
+				sql = fmt.Sprintf("%s AND DATE(receipt_date) <= DATE(?)", sql)
+			}
+		}
+	}
+
+	sql = fmt.Sprintf("%s ORDER BY receipt_date DESC %s %s", sql, limit, offset)
+	rows, err := db.Query(sql, parameters...)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	receipts := []Receipt{}
+
+	for rows.Next() {
+		receipt := Receipt{}
+		rows.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &receipt.Total)
+		receipts = append(receipts, receipt)
+	}
+
+	return &receipts, nil
+}
+
+func FindReceiptForUser(db *sql.DB, receipt_id int, user_id int) (*Receipt, error) {
+	// Get receipt information filtering by given user
+	row := db.QueryRow("SELECT id, supermarket, receipt_date, currency, total FROM receipts WHERE id = ? AND user_id = ?", receipt_id, user_id)
+
+	receipt := Receipt{}
+
+	var currency sql.NullString
+
+	err := row.Scan(&receipt.ID, &receipt.Supermarket, &receipt.Date, &currency, &receipt.Total)
+	receipt.Currency = currency.String
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Get receipt items
+	rows, err := db.Query("SELECT id, quantity, name, unit_price, price FROM receipt_items WHERE receipt_id = ? ORDER BY quantity DESC", receipt_id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		item := ReceiptItem{}
+		rows.Scan(&item.ID, &item.Quantity, &item.Name, &item.UnitPrice, &item.Price)
+		receipt.Items = append(receipt.Items, item)
+	}
+	return &receipt, nil
+
+}
+
+/*
+	// Page and per page
+	if filters.Page > 0 && filters.PerPage > 0 {
+		limit = fmt.Sprintf("LIMIT %d", filters.PerPage)
+		if filters.Page > 1 {
+			offset = fmt.Sprintf("OFFSET %d", (filters.Page-1)*(filters.PerPage))
+		}
+	}
+*/
