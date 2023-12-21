@@ -1,8 +1,8 @@
 import { Component } from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
-import Logout from './logout.jsx'
-import { CLIENT_ID, API_URL } from './constants.js'
+import Logout from '../logout.jsx'
+import { CLIENT_ID, API_URL } from '../constants.js'
 
 /*
   Component to render a form which sends a post request with form data,
