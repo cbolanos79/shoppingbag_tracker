@@ -4,8 +4,8 @@ import { GoogleLogin } from '@react-oauth/google';
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
 import Card from 'react-bootstrap/Card'
-import ErrorMessage from './error_message.jsx'
 import { CLIENT_ID, API_URL } from './constants.js'
+import AlertDismissible from './components/AlertDismissible.jsx';
 
 export default function Login() {
     const [errorData, setErrorData] = useState({})
@@ -42,14 +42,21 @@ export default function Login() {
             window.location.href = "/"
           }).
           catch(error => {
-            setErrorData({message: "Error doing login", errors: [error.message]})
+            setErrorData(error.message)
             setShowError(true)
-
         })    
     }
 
     return (
         <>
+            <Row>
+                <Col className="text-center">
+                    { showError && (
+                        <AlertDismissible content={errorData} show={showError} setShow={setShowError} />
+                        )
+                    }
+                </Col>
+            </Row>       
             <Row>
                 <Col className="col-3"></Col>
                 <Col className="col-6 text-center">
@@ -79,15 +86,7 @@ export default function Login() {
                 </Col>
                 <Col className="col-3"></Col>
             </Row>
-            <Row>
-                <Col className="col-3"></Col>
-                <Col className="col-6 text-center">
-                    { showError && (
-                        <ErrorMessage data={errorData} />
-                        )
-                    }
-                </Col>
-            </Row>
+
         </>
     )
 }

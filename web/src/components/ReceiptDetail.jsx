@@ -10,6 +10,10 @@ export default class ReceiptDetail extends Component {
     }
 
     render() {
+        if (this.props.data.Items===undefined) {
+            return (<></>)
+        }
+
         return (
             <>
                 <dl className="row">

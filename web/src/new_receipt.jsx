@@ -3,20 +3,22 @@ import {useState} from 'react'
 import PuffLoader from "react-spinners/ClipLoader";
 import Row from 'react-bootstrap/Row'
 import Col from 'react-bootstrap/Col'
-import ReceiptUpload from './receipt_upload.jsx'
-import ErrorMessage from './error_message.jsx'
-import ReceiptDetail from './receipt_detail.jsx'
+import ReceiptUpload from './components/ReceiptUpload.jsx'
+import ReceiptDetail from './components/ReceiptDetail.jsx'
 import Card from 'react-bootstrap/Card'
+import AlertDismissible from './components/AlertDismissible.jsx';
+
 
 function NewReceipt() {
   const [processing, setProcessing] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [failure, setFailure] = useState(false)
-  const [failureData, setFailureData] = useState({})
+  const [showAlert, setShowAlert] = useState(false)
   const [successData, setSuccessData] = useState({})
+  const [alertContent, setAlertContent] = useState("")
+  const [alertHeading, setAlertHeading] = useState("")
+  const [alertVariant, setAlertVariant] = useState("danger")
 
   function loadingCallback() {
-    setFailure(false)
     setSuccess(false)
     setProcessing(true)
   }
@@ -25,17 +27,32 @@ function NewReceipt() {
     setSuccess(true)
     setProcessing(false)
     setSuccessData(data)
+    setAlertHeading("Receipt processed successfully")
+    setAlertVariant("success")
+    setShowAlert(true)
   }
   
   function failureCallback(data) {
     setProcessing(false)
     setSuccess(false)
-    setFailure(true)
-    setFailureData(data)
+    setAlertHeading(data.message)
+    setAlertContent(data.errors.map((item) => {
+      return <li className="list-unstyled">{item}</li>
+    }))
+    setAlertVariant("danger")
+    setShowAlert(true)
   }
 
   return (
     <>
+        <Row>
+          <Col className="text-center">
+            { showAlert && (
+               <AlertDismissible heading={alertHeading} content={alertContent} variant={alertVariant} show={showAlert} setShow={setShowAlert} />
+              )
+            }
+          </Col>
+        </Row>
         <Card className="shadow m-4">
           <Card.Body>
               <Card.Title className="bg-light">Upload receipt</Card.Title>
@@ -54,17 +71,14 @@ function NewReceipt() {
                 </Card>
               }
               {
-                failure && <ErrorMessage data={failureData} />
-              }
-              {
-                success && 
+                success &&
                 <Card className="shadow m-4">
                   <Card.Body>
                     <h3 className="text-center">Receipt information</h3>
                     <hr />
                     <ReceiptDetail data={successData} />
                   </Card.Body>
-                </Card>
+                </Card>                
               }
         </Col>
       </Row>
