@@ -13,6 +13,7 @@ function ReceiptList() {
 
     const [receipts, setReceipts] = useState([])
     const [receipt, setReceipt] = useState({})
+    const [searchItem, setSearchItem] = useState("")
     const [showDetail, setShowDetail] = useState(false)
 
     async function showReceiptDetail(id) {
@@ -60,7 +61,7 @@ function ReceiptList() {
       
             { receipt  &&
               <Modal.Body>
-                <ReceiptDetail data={receipt} />
+                <ReceiptDetail data={receipt} searchItem={searchItem}/>
               </Modal.Body>
             }
             </Modal>
@@ -85,6 +86,11 @@ function ReceiptList() {
         if (max_date.length > 0) {
             params.append("min_date", new Date(max_date).toISOString())
         }
+        const item = document.getElementById("item").value
+        if (item.length > 0) {
+            params.append("item", item)
+        }
+        setSearchItem(item)
 
         const url = `${API_URL}/receipts`
 
@@ -168,6 +174,10 @@ function ReceiptList() {
                     <Form.Group className="form-group" >
                         <Form.Label>Supermarket</Form.Label>
                         <Form.Control name="supermarket" id="supermarket"/>
+                    </Form.Group>
+                    <Form.Group className="form-group" >
+                        <Form.Label>Item</Form.Label>
+                        <Form.Control name="item" id="item"/>
                     </Form.Group>
                     <Form.Group className="form-group" >
                         <Form.Label>Start date</Form.Label>

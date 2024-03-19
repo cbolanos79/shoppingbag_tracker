@@ -36,7 +36,12 @@ export default class ReceiptDetail extends Component {
                     </thead>
                     <tbody>
                             {this.props.data.Items.map((item => {
-                                return <tr key={item.ID}>
+                                var class_name = ""
+                                if ((this.props.searchItem.length > 0) && (item.Name.search(new RegExp(this.props.searchItem, "i")) >= 0 )) {
+                                    class_name = "table-warning"
+                                }
+
+                                return <tr key={item.ID} className={class_name}>
                                     <td>{item.Quantity}</td>
                                     <td>{item.Name}</td>
                                     <td>{item.UnitPrice}</td>
