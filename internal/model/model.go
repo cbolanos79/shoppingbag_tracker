@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -36,6 +37,7 @@ type ReceiptFilter struct {
 	PerPage     int64
 	MinDate     *time.Time
 	MaxDate     *time.Time
+	Item        string
 }
 
 type User struct {
@@ -195,15 +197,28 @@ func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]
 	var parameters []interface{}
 	parameters = append(parameters, user.ID)
 
-	sql := "SELECT id, supermarket, receipt_date, total FROM receipts WHERE user_id = ?"
+	sql := "SELECT id, supermarket, receipt_date, total FROM receipts"
+	var joins []string
+	var conditions []string
+
 	var limit, offset string
 
 	// If there are filters apply the available ones
 	if filters != nil {
+
+		// Item
+		// Handle this filter first of all because needs to use a JOIN
+		if filters.Item != "" {
+	        sql = "SELECT receipts.id, supermarket, receipt_date, total FROM receipts"
+			joins = append(joins, "INNER JOIN receipt_items ON receipt_items.receipt_id = receipts.id")
+			conditions = append(conditions, "receipt_items.name LIKE ?")
+			parameters = append(parameters, fmt.Sprintf("%%%s%%", filters.Item))
+		}
+
 		// Supermarket
 		if len(filters.Supermarket) > 0 {
 			parameters = append(parameters, fmt.Sprintf("%%%s%%", filters.Supermarket))
-			sql = fmt.Sprintf("%s AND supermarket like ?", sql)
+			conditions = append(conditions, "supermarket like ?")
 		}
 
 		// Page and per page
@@ -217,7 +232,7 @@ func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]
 		// Date
 		if filters.MinDate != nil {
 			parameters = append(parameters, filters.MinDate)
-			sql = fmt.Sprintf("%s AND DATE(receipt_date) >= DATE(?)", sql)
+			conditions = append(conditions, "DATE(receipt_date) >= DATE(?)")
 
 			// Set max date if present
 			if filters.MaxDate != nil {
@@ -226,13 +241,24 @@ func FindAllReceiptsForUser(db *sql.DB, user *User, filters *ReceiptFilter) (*[]
 				if filters.MaxDate.Before(*filters.MinDate) {
 					return nil, errors.New("MaxDate can not no lower than MinDate")
 				}
+
+				conditions = append(conditions, "DATE(receipt_date) <= DATE(?)")
 				parameters = append(parameters, filters.MaxDate)
-				sql = fmt.Sprintf("%s AND DATE(receipt_date) <= DATE(?)", sql)
 			}
 		}
 	}
 
+	sql = fmt.Sprintf("%s %s", sql, strings.Join(joins, ""))
+
+	if len(conditions) == 0 {
+		sql = fmt.Sprintf("%s WHERE user_id = ?", sql)
+	} else {
+		query_conditions := strings.Join(conditions, " AND ")
+		sql = fmt.Sprintf("%s WHERE user_id = ? AND %s", sql, query_conditions)
+	}
+
 	sql = fmt.Sprintf("%s ORDER BY receipt_date DESC %s %s", sql, limit, offset)
+
 	rows, err := db.Query(sql, parameters...)
 
 	if err != nil {

@@ -164,6 +164,7 @@ func GetReceipts(c echo.Context) error {
 	per_page := c.QueryParam("per_page")
 	min_date := c.QueryParam("min_date")
 	max_date := c.QueryParam("max_date")
+	filters.Item = c.QueryParam("item")
 
 	// Page filter
 	if len(page) > 0 && len(per_page) > 0 {
